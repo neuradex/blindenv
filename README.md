@@ -20,7 +20,8 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#how-it-works">How It Works</a> ·
   <a href="#configuration">Configuration</a> ·
-  <a href="#cli-reference">CLI Reference</a>
+  <a href="#cli-reference">CLI Reference</a> ·
+  <a href="#beyond-secret-managers">Comparison</a>
 </p>
 
 <p align="center">
@@ -48,6 +49,22 @@ blindenv proxy:  Injects real value into subprocess env
                          ↓
 Agent receives:  {"result": "ok", "token": "[REDACTED]"}
 ```
+
+### Every angle is covered
+
+No matter what the agent tries, it cannot see your secrets:
+
+| Agent attempts | Result |
+|---|---|
+| Read `.env` with Read tool | **Blocked** — file access denied |
+| `cat .env` in Bash | **Blocked** — secret file inaccessible |
+| `grep API_KEY .env` | **Blocked** — search in secret files denied |
+| Copy `.env` to `tmp.txt`, read the copy | **Blocked** — content-aware scan detects secret values |
+| `echo $API_KEY` to print the value | Prints `[REDACTED]` |
+| Edit `blindenv.yml` to disable rules | **Blocked** — config is tamper-proof |
+| Rename `.env` to bypass path checks | **Blocked** — content blocking is path-independent |
+
+The agent gets full functionality — API calls work, deploys succeed, services respond. It just never sees the credentials that make it happen.
 
 ---
 
@@ -220,6 +237,26 @@ blindenv has-config                   Exit 0 if config with secrets exists, 1 ot
 blindenv hook cc <hook>               Claude Code PreToolUse hooks
                                        bash | read | grep | guard-file
 ```
+
+---
+
+## Beyond Secret Managers
+
+Traditional secret managers solve **storage and delivery** — where secrets live and how they reach your process. blindenv solves a different problem: **what happens after delivery**, when an AI agent is the one running the process.
+
+| Capability | Secret managers | blindenv |
+|---|---|---|
+| Centralized secret storage | Yes | — (uses your existing `.env`) |
+| Runtime injection into processes | Yes | Yes |
+| Output redaction | — | Yes |
+| Agent file access blocking | — | Yes |
+| Content-aware blocking | — | Yes |
+| Config tamper-proofing | — | Yes |
+| AI agent tool hooks | — | Yes |
+
+Secret managers and blindenv are complementary. A secret manager gets the right values into your `.env` or CI pipeline. blindenv makes sure the agent that runs your commands can **use** those values without **seeing** them.
+
+Without an agent-aware layer, an injected secret can still be read from files, echoed to stdout, or leaked through copied files — regardless of how well it was managed upstream.
 
 ---
 
