@@ -1,0 +1,4 @@
+blindenv
+.env*
+!.env.example
+dist/

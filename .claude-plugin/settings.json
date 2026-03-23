@@ -1,0 +1,6 @@
+{
+  "name": "blindenv",
+  "description": "Secret isolation for AI coding agents",
+  "version": "0.1.0",
+  "hooks": "../hooks/hooks.json"
+}
