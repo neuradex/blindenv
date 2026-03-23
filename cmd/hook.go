@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -10,17 +9,14 @@ import (
 
 	"github.com/neuradex-labs/blindenv/config"
 	"github.com/neuradex-labs/blindenv/engine"
+	"github.com/neuradex-labs/blindenv/provider"
+	"github.com/neuradex-labs/blindenv/provider/cc"
 )
-
-// hookInput represents the JSON input from agent tool hooks.
-type hookInput struct {
-	ToolInput map[string]interface{} `json:"tool_input"`
-}
 
 func hookCmd() error {
 	if len(os.Args) < 4 {
 		fmt.Fprintln(os.Stderr, "usage: blindenv hook <platform> <hook-name>")
-		fmt.Fprintln(os.Stderr, "  platforms: cc (Claude Code), oc (OpenClaw)")
+		fmt.Fprintln(os.Stderr, "  platforms: cc (Claude Code)")
 		fmt.Fprintln(os.Stderr, "  cc hooks:  bash, read, grep, guard-config")
 		os.Exit(1)
 	}
@@ -28,168 +24,144 @@ func hookCmd() error {
 	platform := os.Args[2]
 	hookName := os.Args[3]
 
-	switch platform {
-	case "cc":
-		return hookCC(hookName)
-	default:
+	p := resolveProvider(platform)
+	if p == nil {
 		fmt.Fprintf(os.Stderr, "unknown platform: %s\n", platform)
 		os.Exit(1)
 	}
-	return nil
-}
 
-// hookCC dispatches Claude Code PreToolUse hooks.
-func hookCC(hookName string) error {
-	input, err := readHookInput()
+	stdin, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		os.Exit(0)
 	}
+
+	var result provider.HookResult
 
 	switch hookName {
 	case "bash":
-		return ccBash(input)
+		result = hookBash(p, stdin)
 	case "read":
-		return ccRead(input)
+		result = hookRead(p, stdin)
 	case "grep":
-		return ccGrep(input)
+		result = hookGrep(p, stdin)
 	case "guard-config":
-		return ccGuardConfig(input)
+		result = hookGuardConfig(p, stdin)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown cc hook: %s\n", hookName)
+		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", hookName)
 		os.Exit(1)
+	}
+
+	return respond(p, result)
+}
+
+func resolveProvider(name string) provider.Provider {
+	switch name {
+	case "cc":
+		return cc.New()
+	default:
+		return nil
+	}
+}
+
+func respond(p provider.Provider, result provider.HookResult) error {
+	switch result.Action {
+	case provider.Allow:
+		if data := p.FormatAllow(); data != nil {
+			fmt.Println(string(data))
+		}
+		os.Exit(0)
+	case provider.Block:
+		stderr, exitCode := p.FormatBlock(result.Reason)
+		fmt.Fprintln(os.Stderr, stderr)
+		os.Exit(exitCode)
+	case provider.Rewrite:
+		if data := p.FormatRewrite(result.Command); data != nil {
+			fmt.Println(string(data))
+		}
+		os.Exit(0)
 	}
 	return nil
 }
 
-func readHookInput() (*hookInput, error) {
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return nil, err
-	}
-	var input hookInput
-	if err := json.Unmarshal(data, &input); err != nil {
-		return nil, err
-	}
-	return &input, nil
-}
+// --- Hook logic (platform-independent) ---
 
-func getToolInputString(input *hookInput, key string) string {
-	if input.ToolInput == nil {
-		return ""
-	}
-	val, ok := input.ToolInput[key]
-	if !ok {
-		return ""
-	}
-	s, ok := val.(string)
-	if !ok {
-		return ""
-	}
-	return s
-}
-
-// ccBash rewrites bare bash commands to go through `blindenv run`.
-func ccBash(input *hookInput) error {
-	command := getToolInputString(input, "command")
+func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
+	command := p.ParseBashCommand(stdin)
 	if command == "" {
-		os.Exit(0)
+		return provider.HookResult{Action: provider.Allow}
 	}
 
-	// Allow blindenv's own commands through
 	if strings.HasPrefix(command, "blindenv ") || command == "blindenv" {
-		os.Exit(0)
+		return provider.HookResult{Action: provider.Allow}
 	}
 
-	// Check if env mediation is active
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
-		os.Exit(0)
-		return nil
+		return provider.HookResult{Action: provider.Allow}
 	}
 	if len(cfg.Inject) == 0 && len(cfg.SecretFiles) == 0 {
-		os.Exit(0)
-		return nil
+		return provider.HookResult{Action: provider.Allow}
 	}
 
-	// Rewrite command to go through blindenv run
 	escaped := strings.ReplaceAll(command, "'", "'\\''")
 	wrapped := fmt.Sprintf("blindenv run '%s'", escaped)
 
-	out := map[string]interface{}{
-		"hookSpecificOutput": map[string]interface{}{
-			"hookEventName":      "PreToolUse",
-			"permissionDecision": "allow",
-			"updatedInput": map[string]interface{}{
-				"command": wrapped,
-			},
-		},
-	}
-	data, _ := json.Marshal(out)
-	fmt.Println(string(data))
-	return nil
+	return provider.HookResult{Action: provider.Rewrite, Command: wrapped}
 }
 
-// ccRead blocks access to secret files.
-func ccRead(input *hookInput) error {
-	filePath := getToolInputString(input, "file_path")
+func hookRead(p provider.Provider, stdin []byte) provider.HookResult {
+	filePath := p.ParseFilePath(stdin)
 	if filePath == "" {
-		os.Exit(0)
+		return provider.HookResult{Action: provider.Allow}
 	}
 
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
-		os.Exit(0)
-		return nil
+		return provider.HookResult{Action: provider.Allow}
 	}
 
 	secrets := engine.ResolveSecrets(cfg)
 	blocked, reason := engine.CheckFile(filePath, cfg, secrets)
 	if blocked {
-		fmt.Fprintf(os.Stderr, "blindenv: %s\n", reason)
-		os.Exit(2)
+		return provider.HookResult{Action: provider.Block, Reason: reason}
 	}
 
-	os.Exit(0)
-	return nil
+	return provider.HookResult{Action: provider.Allow}
 }
 
-// ccGrep blocks grep on secret file paths.
-func ccGrep(input *hookInput) error {
-	searchPath := getToolInputString(input, "path")
+func hookGrep(p provider.Provider, stdin []byte) provider.HookResult {
+	searchPath := p.ParseFilePath(stdin)
 	if searchPath == "" {
-		os.Exit(0)
+		return provider.HookResult{Action: provider.Allow}
 	}
 
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
-		os.Exit(0)
-		return nil
+		return provider.HookResult{Action: provider.Allow}
 	}
 
 	secrets := engine.ResolveSecrets(cfg)
 	blocked, reason := engine.CheckFile(searchPath, cfg, secrets)
 	if blocked {
-		fmt.Fprintf(os.Stderr, "blindenv: %s\n", reason)
-		os.Exit(2)
+		return provider.HookResult{Action: provider.Block, Reason: reason}
 	}
 
-	os.Exit(0)
-	return nil
+	return provider.HookResult{Action: provider.Allow}
 }
 
-// ccGuardConfig blocks agent from modifying blindenv config files.
-func ccGuardConfig(input *hookInput) error {
-	filePath := getToolInputString(input, "file_path")
+func hookGuardConfig(p provider.Provider, stdin []byte) provider.HookResult {
+	filePath := p.ParseFilePath(stdin)
 	if filePath == "" {
-		os.Exit(0)
+		return provider.HookResult{Action: provider.Allow}
 	}
 
 	base := filepath.Base(filePath)
 	if base == "blindenv.yml" || base == ".blindenv.yml" {
-		fmt.Fprintln(os.Stderr, "blindenv: cannot modify blindenv config. Ask the user to edit it directly.")
-		os.Exit(2)
+		return provider.HookResult{
+			Action: provider.Block,
+			Reason: "cannot modify blindenv config. Ask the user to edit it directly.",
+		}
 	}
 
-	os.Exit(0)
-	return nil
+	return provider.HookResult{Action: provider.Allow}
 }
