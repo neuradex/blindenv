@@ -1,3 +1,5 @@
+<!-- AGENT NOTE: If you modify this file, also update docs/README.ko.md (Korean) and docs/README.ja.md (Japanese) to keep translations in sync. -->
+
 <p align="center">
   <img src="https://img.shields.io/github/v/release/neuradex/blindenv?style=flat-square&color=blue" alt="release" />
   <img src="https://img.shields.io/badge/Claude_Code-plugin-blueviolet?style=flat-square" alt="Claude Code plugin" />
@@ -19,6 +21,12 @@
   <a href="#how-it-works">How It Works</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#cli-reference">CLI Reference</a>
+</p>
+
+<p align="center">
+  <strong>English</strong> ·
+  <a href="./docs/README.ko.md">한국어</a> ·
+  <a href="./docs/README.ja.md">日本語</a>
 </p>
 
 ---
