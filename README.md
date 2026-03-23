@@ -44,23 +44,15 @@ Agent receives:  {"result": "ok", "token": "[REDACTED]"}
 
 ## Install
 
-### Claude Code Plugin
-
-**Step 1.** Install the binary:
+### Claude Code Plugin (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/neuradex/blindenv/main/scripts/install.sh | sh
-```
-
-This downloads the right binary for your platform (macOS/Linux, amd64/arm64) from [GitHub Releases](https://github.com/neuradex/blindenv/releases) and installs it to `~/.local/bin`.
-
-**Step 2.** Install the plugin in Claude Code:
-
-```
 /install-plugin neuradex/blindenv
 ```
 
-**Step 3.** Create `blindenv.yml` in your project root:
+That's it. On the next session start, the binary is automatically downloaded from [GitHub Releases](https://github.com/neuradex/blindenv/releases) for your platform (macOS/Linux, amd64/arm64). No manual setup needed.
+
+Then create `blindenv.yml` in your project root:
 
 ```yaml
 secret_files:
@@ -69,11 +61,13 @@ secret_files:
 
 Done. Every Bash command is now routed through blindenv. Secret files are blocked from all agent tools.
 
-### Manual install
+### Standalone install
+
+If you want to use blindenv outside of Claude Code:
 
 ```bash
-# From GitHub Releases (specific version)
-curl -fsSL https://raw.githubusercontent.com/neuradex/blindenv/main/scripts/install.sh | sh -s v0.1.0
+# From GitHub Releases
+curl -fsSL https://raw.githubusercontent.com/neuradex/blindenv/main/scripts/install.sh | sh
 
 # Or build from source
 go install github.com/neuradex-labs/blindenv@latest

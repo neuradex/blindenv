@@ -1,12 +1,22 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start.sh"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc bash"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/blindenv hook cc bash"
           }
         ]
       },
@@ -15,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc read"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/blindenv hook cc read"
           }
         ]
       },
@@ -24,7 +34,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc grep"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/blindenv hook cc grep"
           }
         ]
       },
@@ -33,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc guard-file"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/blindenv hook cc guard-file"
           }
         ]
       },
@@ -42,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc guard-file"
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/blindenv hook cc guard-file"
           }
         ]
       }

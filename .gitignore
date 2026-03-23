@@ -1,4 +1,5 @@
 blindenv
+bin/
 .env*
 !.env.example
 dist/
