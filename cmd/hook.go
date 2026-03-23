@@ -21,9 +21,12 @@ func hookCmd() error {
 		os.Exit(1)
 	}
 
-	p := resolveProvider(os.Args[2])
+	platform := os.Args[2]
+	hookName := os.Args[3]
+
+	p := resolveProvider(platform)
 	if p == nil {
-		fmt.Fprintf(os.Stderr, "unknown platform: %s\n", os.Args[2])
+		fmt.Fprintf(os.Stderr, "unknown platform: %s\n", platform)
 		os.Exit(1)
 	}
 
@@ -33,7 +36,7 @@ func hookCmd() error {
 	}
 
 	var result provider.HookResult
-	switch os.Args[3] {
+	switch hookName {
 	case "bash":
 		result = hookBash(p, stdin)
 	case "read", "grep":
@@ -41,7 +44,7 @@ func hookCmd() error {
 	case "guard-file":
 		result = hookGuardFile(p, stdin)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", os.Args[3])
+		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", hookName)
 		os.Exit(1)
 	}
 
