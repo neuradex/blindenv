@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc guard-config"
+            "command": "blindenv hook cc guard-file"
           }
         ]
       },
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "blindenv hook cc guard-config"
+            "command": "blindenv hook cc guard-file"
           }
         ]
       }

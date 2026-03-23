@@ -17,7 +17,7 @@ func hookCmd() error {
 	if len(os.Args) < 4 {
 		fmt.Fprintln(os.Stderr, "usage: blindenv hook <platform> <hook-name>")
 		fmt.Fprintln(os.Stderr, "  platforms: cc (Claude Code)")
-		fmt.Fprintln(os.Stderr, "  cc hooks:  bash, read, grep, guard-config")
+		fmt.Fprintln(os.Stderr, "  cc hooks:  bash, read, grep, guard-file")
 		os.Exit(1)
 	}
 
@@ -44,8 +44,8 @@ func hookCmd() error {
 		result = hookRead(p, stdin)
 	case "grep":
 		result = hookGrep(p, stdin)
-	case "guard-config":
-		result = hookGuardConfig(p, stdin)
+	case "guard-file":
+		result = hookGuardFile(p, stdin)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", hookName)
 		os.Exit(1)
@@ -149,17 +149,31 @@ func hookGrep(p provider.Provider, stdin []byte) provider.HookResult {
 	return provider.HookResult{Action: provider.Allow}
 }
 
-func hookGuardConfig(p provider.Provider, stdin []byte) provider.HookResult {
+func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 	filePath := p.ParseFilePath(stdin)
 	if filePath == "" {
 		return provider.HookResult{Action: provider.Allow}
 	}
 
+	// 1. Config file protection
 	base := filepath.Base(filePath)
 	if base == "blindenv.yml" || base == ".blindenv.yml" {
 		return provider.HookResult{
 			Action: provider.Block,
 			Reason: "cannot modify blindenv config. Ask the user to edit it directly.",
+		}
+	}
+
+	// 2. Secret files protection
+	cfg, err := config.Load()
+	if err != nil || cfg == nil {
+		return provider.HookResult{Action: provider.Allow}
+	}
+
+	if engine.MatchSecretFilePath(filePath, cfg.SecretFiles) {
+		return provider.HookResult{
+			Action: provider.Block,
+			Reason: "cannot modify secret file. Ask the user to edit it directly.",
 		}
 	}
 

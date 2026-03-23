@@ -103,11 +103,11 @@ Add hooks to your project's `.claude/settings.json`:
       },
       {
         "matcher": "Edit",
-        "hooks": [{ "type": "command", "command": "blindenv hook cc guard-config" }]
+        "hooks": [{ "type": "command", "command": "blindenv hook cc guard-file" }]
       },
       {
         "matcher": "Write",
-        "hooks": [{ "type": "command", "command": "blindenv hook cc guard-config" }]
+        "hooks": [{ "type": "command", "command": "blindenv hook cc guard-file" }]
       }
     ]
   }
@@ -126,7 +126,7 @@ Coming soon.
 blindenv run '<command>'              Execute with secret isolation + output redaction
 blindenv check-file <path>            Check if a file contains or exposes secrets (exit 2 = blocked)
 blindenv has-config                   Exit 0 if config with secrets exists, 1 otherwise
-blindenv hook cc <bash|read|grep|guard-config>   Claude Code PreToolUse hooks
+blindenv hook cc <bash|read|grep|guard-file>   Claude Code PreToolUse hooks
 blindenv version                      Show version
 ```
 
