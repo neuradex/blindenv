@@ -1,9 +1,19 @@
 {
-  "source": "./",
-  "repository": "https://github.com/neuradex/blindenv",
-  "binary": {
-    "name": "blindenv",
-    "releases": "https://github.com/neuradex/blindenv/releases",
-    "install_script": "scripts/install.sh"
-  }
+  "name": "blindenv",
+  "owner": {
+    "name": "neuradex"
+  },
+  "metadata": {
+    "description": "blindenv — secret isolation for AI coding agents. Inject, redact, block.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "blindenv",
+      "source": "./",
+      "description": "Secret isolation for AI coding agents — agents use your secrets but never see them",
+      "homepage": "https://github.com/neuradex/blindenv",
+      "keywords": ["secrets", "env", "isolation", "redaction", "agent", "security"]
+    }
+  ]
 }

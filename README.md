@@ -47,7 +47,8 @@ Agent receives:  {"result": "ok", "token": "[REDACTED]"}
 ### Claude Code Plugin (recommended)
 
 ```bash
-/install-plugin neuradex/blindenv
+/plugin marketplace add neuradex/blindenv
+/plugin install blindenv@blindenv
 ```
 
 That's it. On the next session start, the binary is automatically downloaded from [GitHub Releases](https://github.com/neuradex/blindenv/releases) for your platform (macOS/Linux, amd64/arm64). No manual setup needed.
