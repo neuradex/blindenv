@@ -88,7 +88,7 @@ func getToolInputString(input *hookInput, key string) string {
 	return s
 }
 
-// ccBash forces bare bash through `blindenv run` when config exists.
+// ccBash rewrites bare bash commands to go through `blindenv run`.
 func ccBash(input *hookInput) error {
 	command := getToolInputString(input, "command")
 	if command == "" {
@@ -111,8 +111,21 @@ func ccBash(input *hookInput) error {
 		return nil
 	}
 
-	fmt.Fprintf(os.Stderr, "blindenv: secret isolation active. Run instead: blindenv run '%s'\n", command)
-	os.Exit(2)
+	// Rewrite command to go through blindenv run
+	escaped := strings.ReplaceAll(command, "'", "'\\''")
+	wrapped := fmt.Sprintf("blindenv run '%s'", escaped)
+
+	out := map[string]interface{}{
+		"hookSpecificOutput": map[string]interface{}{
+			"hookEventName":      "PreToolUse",
+			"permissionDecision": "allow",
+			"updatedInput": map[string]interface{}{
+				"command": wrapped,
+			},
+		},
+	}
+	data, _ := json.Marshal(out)
+	fmt.Println(string(data))
 	return nil
 }
 
