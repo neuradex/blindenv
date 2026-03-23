@@ -59,16 +59,18 @@ Agent receives:  {"result": "ok", "token": "[REDACTED]"}
 /plugin install blindenv@blindenv
 ```
 
-That's it. On the next session start, the binary is automatically downloaded from [GitHub Releases](https://github.com/neuradex/blindenv/releases) for your platform (macOS/Linux, amd64/arm64). No manual setup needed.
+That's it. On the next session start, the binary is automatically downloaded from [GitHub Releases](https://github.com/neuradex/blindenv/releases) for your platform and `blindenv.yml` is auto-generated in your project root.
 
-Then create `blindenv.yml` in your project root:
+Open `blindenv.yml` and configure which files contain secrets:
 
 ```yaml
 secret_files:
   - .env
+  - .env.local
+  # - ~/.aws/credentials
 ```
 
-Done. Every Bash command is now routed through blindenv. Secret files are blocked from all agent tools.
+Once configured, the agent cannot even know these files exist — all access is structurally blocked.
 
 ### Build from source
 

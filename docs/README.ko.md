@@ -59,16 +59,18 @@ blindenv 프록시:  서브프로세스 환경에 실제 값 주입
 /plugin install blindenv@blindenv
 ```
 
-끝입니다. 다음 세션 시작 시 플랫폼(macOS/Linux/Windows, amd64/arm64)에 맞는 바이너리가 [GitHub Releases](https://github.com/neuradex/blindenv/releases)에서 자동 다운로드됩니다.
+끝입니다. 다음 세션 시작 시 플랫폼에 맞는 바이너리가 [GitHub Releases](https://github.com/neuradex/blindenv/releases)에서 자동 다운로드되고, 프로젝트 루트에 `blindenv.yml`이 자동 생성됩니다.
 
-프로젝트 루트에 `blindenv.yml`을 생성하세요:
+`blindenv.yml`을 열어 보호할 시크릿 파일을 설정하세요:
 
 ```yaml
 secret_files:
   - .env
+  - .env.local
+  # - ~/.aws/credentials
 ```
 
-완료. 모든 Bash 명령이 blindenv를 통해 실행되고, 시크릿 파일은 모든 에이전트 도구에서 차단됩니다.
+설정이 완료되면 에이전트는 이 파일들이 존재하는지조차 알 수 없습니다 — 모든 접근이 구조적으로 차단됩니다.
 
 ### 소스에서 빌드
 

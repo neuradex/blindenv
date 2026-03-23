@@ -59,16 +59,18 @@ blindenvプロキシ:  サブプロセス環境に実際の値を注入
 /plugin install blindenv@blindenv
 ```
 
-以上です。次のセッション開始時に、プラットフォーム（macOS/Linux/Windows、amd64/arm64）に合ったバイナリが[GitHub Releases](https://github.com/neuradex/blindenv/releases)から自動ダウンロードされます。
+以上です。次のセッション開始時に、プラットフォームに合ったバイナリが[GitHub Releases](https://github.com/neuradex/blindenv/releases)から自動ダウンロードされ、プロジェクトルートに`blindenv.yml`が自動生成されます。
 
-プロジェクトルートに`blindenv.yml`を作成してください：
+`blindenv.yml`を開いて、保護するシークレットファイルを設定してください：
 
 ```yaml
 secret_files:
   - .env
+  - .env.local
+  # - ~/.aws/credentials
 ```
 
-完了。すべてのBashコマンドがblindenvを経由し、シークレットファイルはすべてのエージェントツールからブロックされます。
+設定が完了すると、エージェントはこれらのファイルが存在することすら知ることができません — すべてのアクセスが構造的にブロックされます。
 
 ### ソースからビルド
 
