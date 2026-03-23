@@ -21,12 +21,9 @@ func hookCmd() error {
 		os.Exit(1)
 	}
 
-	platform := os.Args[2]
-	hookName := os.Args[3]
-
-	p := resolveProvider(platform)
+	p := resolveProvider(os.Args[2])
 	if p == nil {
-		fmt.Fprintf(os.Stderr, "unknown platform: %s\n", platform)
+		fmt.Fprintf(os.Stderr, "unknown platform: %s\n", os.Args[2])
 		os.Exit(1)
 	}
 
@@ -36,23 +33,22 @@ func hookCmd() error {
 	}
 
 	var result provider.HookResult
-
-	switch hookName {
+	switch os.Args[3] {
 	case "bash":
 		result = hookBash(p, stdin)
-	case "read":
-		result = hookRead(p, stdin)
-	case "grep":
-		result = hookGrep(p, stdin)
+	case "read", "grep":
+		result = hookFileAccess(p, stdin)
 	case "guard-file":
 		result = hookGuardFile(p, stdin)
 	default:
-		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", hookName)
+		fmt.Fprintf(os.Stderr, "unknown hook: %s\n", os.Args[3])
 		os.Exit(1)
 	}
 
 	return respond(p, result)
 }
+
+var allow = provider.HookResult{Action: provider.Allow}
 
 func resolveProvider(name string) provider.Provider {
 	switch name {
@@ -87,75 +83,46 @@ func respond(p provider.Provider, result provider.HookResult) error {
 
 func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 	command := p.ParseBashCommand(stdin)
-	if command == "" {
-		return provider.HookResult{Action: provider.Allow}
-	}
-
-	if strings.HasPrefix(command, "blindenv ") || command == "blindenv" {
-		return provider.HookResult{Action: provider.Allow}
+	if command == "" || command == "blindenv" || strings.HasPrefix(command, "blindenv ") {
+		return allow
 	}
 
 	cfg, err := config.Load()
-	if err != nil || cfg == nil {
-		return provider.HookResult{Action: provider.Allow}
-	}
-	if len(cfg.Inject) == 0 && len(cfg.SecretFiles) == 0 {
-		return provider.HookResult{Action: provider.Allow}
+	if err != nil || cfg == nil || !cfg.HasSecrets() {
+		return allow
 	}
 
 	escaped := strings.ReplaceAll(command, "'", "'\\''")
-	wrapped := fmt.Sprintf("blindenv run '%s'", escaped)
-
-	return provider.HookResult{Action: provider.Rewrite, Command: wrapped}
+	return provider.HookResult{
+		Action:  provider.Rewrite,
+		Command: fmt.Sprintf("blindenv run '%s'", escaped),
+	}
 }
 
-func hookRead(p provider.Provider, stdin []byte) provider.HookResult {
+func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 	filePath := p.ParseFilePath(stdin)
 	if filePath == "" {
-		return provider.HookResult{Action: provider.Allow}
+		return allow
 	}
 
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
-		return provider.HookResult{Action: provider.Allow}
+		return allow
 	}
 
 	secrets := engine.ResolveSecrets(cfg)
-	blocked, reason := engine.CheckFile(filePath, cfg, secrets)
-	if blocked {
+	if blocked, reason := engine.CheckFile(filePath, cfg, secrets); blocked {
 		return provider.HookResult{Action: provider.Block, Reason: reason}
 	}
-
-	return provider.HookResult{Action: provider.Allow}
-}
-
-func hookGrep(p provider.Provider, stdin []byte) provider.HookResult {
-	searchPath := p.ParseFilePath(stdin)
-	if searchPath == "" {
-		return provider.HookResult{Action: provider.Allow}
-	}
-
-	cfg, err := config.Load()
-	if err != nil || cfg == nil {
-		return provider.HookResult{Action: provider.Allow}
-	}
-
-	secrets := engine.ResolveSecrets(cfg)
-	blocked, reason := engine.CheckFile(searchPath, cfg, secrets)
-	if blocked {
-		return provider.HookResult{Action: provider.Block, Reason: reason}
-	}
-
-	return provider.HookResult{Action: provider.Allow}
+	return allow
 }
 
 func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 	filePath := p.ParseFilePath(stdin)
 	if filePath == "" {
-		return provider.HookResult{Action: provider.Allow}
+		return allow
 	}
 
-	// 1. Config file protection
 	base := filepath.Base(filePath)
 	if base == "blindenv.yml" || base == ".blindenv.yml" {
 		return provider.HookResult{
@@ -164,10 +131,9 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 		}
 	}
 
-	// 2. Secret files protection
 	cfg, err := config.Load()
 	if err != nil || cfg == nil {
-		return provider.HookResult{Action: provider.Allow}
+		return allow
 	}
 
 	if engine.MatchSecretFilePath(filePath, cfg.SecretFiles) {
@@ -176,6 +142,5 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 			Reason: "cannot modify secret file. Ask the user to edit it directly.",
 		}
 	}
-
-	return provider.HookResult{Action: provider.Allow}
+	return allow
 }

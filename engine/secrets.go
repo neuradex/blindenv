@@ -58,14 +58,7 @@ func BuildSanitizedEnv(cfg *config.Config, secrets map[string]string) []string {
 		}
 	}
 
-	// Always include inject vars
-	for _, name := range cfg.Inject {
-		if val := os.Getenv(name); val != "" {
-			env[name] = val
-		}
-	}
-
-	// Inject file-derived secrets
+	// Overlay secrets (inject + file-derived, already resolved by ResolveSecrets)
 	for k, v := range secrets {
 		if _, exists := env[k]; !exists {
 			env[k] = v
@@ -87,26 +80,20 @@ func RedactSecrets(output string, secrets map[string]string) string {
 		return output
 	}
 
-	// Collect non-empty values and sort by length descending
-	type kv struct {
-		key string
-		val string
-	}
-	var pairs []kv
-	for k, v := range secrets {
+	vals := make([]string, 0, len(secrets))
+	for _, v := range secrets {
 		if v != "" {
-			pairs = append(pairs, kv{k, v})
+			vals = append(vals, v)
 		}
 	}
-	sort.Slice(pairs, func(i, j int) bool {
-		return len(pairs[i].val) > len(pairs[j].val)
+	sort.Slice(vals, func(i, j int) bool {
+		return len(vals[i]) > len(vals[j])
 	})
 
-	result := output
-	for _, p := range pairs {
-		result = strings.ReplaceAll(result, p.val, "[REDACTED]")
+	for _, v := range vals {
+		output = strings.ReplaceAll(output, v, "[REDACTED]")
 	}
-	return result
+	return output
 }
 
 // parseEnvFile reads a .env-style file and extracts KEY=VALUE pairs.

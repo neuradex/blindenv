@@ -285,7 +285,8 @@ func TestBuildSanitizedEnv_InjectAlwaysPresent_EvenInStrictMode(t *testing.T) {
 		Passthrough: []string{"PATH"}, // strict mode
 		Inject:      []string{"BLINDENV_INJECTED"},
 	}
-	got := BuildSanitizedEnv(cfg, nil)
+	secrets := ResolveSecrets(cfg)
+	got := BuildSanitizedEnv(cfg, secrets)
 
 	if !containsEntry(got, "BLINDENV_INJECTED=secret_val") {
 		t.Error("inject vars must always be present in the env, even in strict mode")

@@ -92,11 +92,9 @@ func hasConfigCmd() error {
 	if cfg == nil {
 		os.Exit(1)
 	}
-	// Config exists and has env mediation settings
-	if len(cfg.Inject) == 0 && len(cfg.SecretFiles) == 0 {
+	if !cfg.HasSecrets() {
 		os.Exit(1)
 	}
-	os.Exit(0)
 	return nil
 }
 

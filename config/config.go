@@ -7,6 +7,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Config represents a blindenv.yml configuration file.
+type Config struct {
+	Inject      []string `yaml:"inject,omitempty"`
+	Passthrough []string `yaml:"passthrough,omitempty"`
+	SecretFiles []string `yaml:"secret_files,omitempty"`
+}
+
+// HasSecrets reports whether the config defines any secret sources.
+func (c *Config) HasSecrets() bool {
+	return len(c.Inject) > 0 || len(c.SecretFiles) > 0
+}
+
 // FindConfigFile walks up from the given directory (or cwd) to find blindenv.yml.
 func FindConfigFile(from string) string {
 	if from == "" {
