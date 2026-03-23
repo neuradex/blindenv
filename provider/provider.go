@@ -2,9 +2,10 @@ package provider
 
 // HookResult represents what a hook should do.
 type HookResult struct {
-	Action  Action
-	Reason  string // for Block
-	Command string // for Rewrite
+	Action       Action
+	Reason       string                 // for Block
+	Command      string                 // for Rewrite
+	UpdatedInput map[string]interface{} // for Modify
 }
 
 type Action int
@@ -12,7 +13,8 @@ type Action int
 const (
 	Allow   Action = iota // exit 0, no output
 	Block                 // exit 2 + stderr reason
-	Rewrite               // exit 0 + rewritten command
+	Rewrite               // exit 0 + rewritten command (bash)
+	Modify                // exit 0 + modified tool input
 )
 
 // Provider adapts blindenv to a specific agent platform.
@@ -34,4 +36,10 @@ type Provider interface {
 
 	// FormatRewrite returns stdout bytes that rewrite the bash command.
 	FormatRewrite(newCommand string) []byte
+
+	// ParseToolInput returns the full tool_input map from hook stdin.
+	ParseToolInput(stdin []byte) map[string]interface{}
+
+	// FormatModifiedInput returns stdout bytes with updated tool input.
+	FormatModifiedInput(input map[string]interface{}) []byte
 }

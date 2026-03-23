@@ -46,6 +46,26 @@ func (p *Provider) FormatRewrite(newCommand string) []byte {
 	return data
 }
 
+func (p *Provider) ParseToolInput(stdin []byte) map[string]interface{} {
+	var input hookInput
+	if err := json.Unmarshal(stdin, &input); err != nil {
+		return nil
+	}
+	return input.ToolInput
+}
+
+func (p *Provider) FormatModifiedInput(input map[string]interface{}) []byte {
+	out := map[string]interface{}{
+		"hookSpecificOutput": map[string]interface{}{
+			"hookEventName":      "PreToolUse",
+			"permissionDecision": "allow",
+			"updatedInput":       input,
+		},
+	}
+	data, _ := json.Marshal(out)
+	return data
+}
+
 func parseField(stdin []byte, field string) string {
 	var input hookInput
 	if err := json.Unmarshal(stdin, &input); err != nil {

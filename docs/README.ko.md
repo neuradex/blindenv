@@ -58,7 +58,8 @@ blindenv 프록시:  서브프로세스 환경에 실제 값 주입
 |---|---|
 | Read 도구로 `.env` 읽기 | **차단** — 파일 접근 거부 |
 | Bash에서 `cat .env` | **차단** — 시크릿 파일 접근 불가 |
-| `grep API_KEY .env` | **차단** — 시크릿 파일 검색 거부 |
+| `grep API_KEY .env` | **제외** — 시크릿 파일이 검색 결과에서 소리소문 없이 제외됨 |
+| `Glob **/.env*`로 시크릿 파일 탐색 | **제외** — 시크릿 파일이 파일 목록에서 소리소문 없이 제외됨 |
 | `.env`를 `tmp.txt`로 복사 후 읽기 | **차단** — 내용 기반 스캔이 시크릿 값 감지 |
 | `echo $API_KEY`로 값 출력 | `[REDACTED]` 출력 |
 | `blindenv.yml` 수정하여 규칙 해제 | **차단** — 설정 변조 불가 |
@@ -159,25 +160,25 @@ Claude Code 플러그인으로 사용 시에는 `blindenv run`을 직접 쓸 필
 |---|------|------|
 | 1 | **서브프로세스 격리** | 시크릿은 서브프로세스 환경에만 존재 — 에이전트 컨텍스트에는 절대 노출되지 않음 |
 | 2 | **출력 마스킹** | stdout/stderr를 스캔하여 시크릿 값을 `[REDACTED]`로 치환 |
-| 3 | **파일 차단** | `secret_files`에 등록된 파일에 대해 Read, Grep, Edit, Write 차단 |
+| 3 | **파일 차단** | 시크릿 파일은 Read/Edit/Write 차단, Grep/Glob 결과에서 소리소문 없이 제외 |
 | 4 | **설정 보호** | 에이전트가 `blindenv.yml`을 수정할 수 없음 — 변조 불가 |
 | 5 | **내용 기반 차단** | 시크릿 값이 포함된 파일은 경로와 무관하게 차단 — 복사나 이름 변경으로 우회 불가 |
 
 ### Claude Code 훅
 
-플러그인 설치 시, 5개의 PreToolUse 훅이 모든 에이전트 동작을 감시합니다:
+플러그인 설치 시, 6개의 PreToolUse 훅이 모든 에이전트 동작을 감시합니다:
 
 ```
 ┌─ blindenv.yml ──────────────────────────────────────┐
 │                                                      │
-│  Bash 훅           Read/Grep 훅      Edit/Write 훅   │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ 명령 래핑     │  │ 시크릿 파일   │  │ 시크릿     │ │
-│  │ → blindenv   │  │ 접근 차단     │  │ 파일 +     │ │
-│  │   run '...'  │  │              │  │ 설정 차단   │ │
-│  │ 시크릿 주입   │  │              │  │            │ │
-│  │ 출력 마스킹   │  │              │  │            │ │
-│  └──────────────┘  └──────────────┘  └────────────┘ │
+│  Bash 훅         Read 훅         Grep/Glob 훅      Edit/Write 훅  │
+│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────┐ │
+│  │ 명령 래핑    │  │ 시크릿     │  │ !glob 주입   │  │ 시크릿     │ │
+│  │ → blindenv  │  │ 파일       │  │ 시크릿 파일   │  │ 파일 +     │ │
+│  │   run '...' │  │ 접근       │  │ 소리소문 없이 │  │ 설정 차단   │ │
+│  │ 시크릿 주입  │  │ 차단       │  │ 제외         │  │            │ │
+│  │ 출력 마스킹  │  │            │  │              │  │            │ │
+│  └─────────────┘  └────────────┘  └──────────────┘  └────────────┘ │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -186,7 +187,8 @@ Claude Code 플러그인으로 사용 시에는 `blindenv run`을 직접 쓸 필
 |------|-----|------|
 | **Bash** | `blindenv hook cc bash` | 명령을 `blindenv run '...'`으로 래핑 — 시크릿 주입, 출력 마스킹 |
 | **Read** | `blindenv hook cc read` | 시크릿 파일 읽기 차단 |
-| **Grep** | `blindenv hook cc grep` | 시크릿 파일 검색 차단 |
+| **Grep** | `blindenv hook cc grep` | 제외 glob 주입 — 시크릿 파일이 검색 결과에서 소리소문 없이 제외 |
+| **Glob** | `blindenv hook cc glob` | 제외 패턴 주입 — 시크릿 파일이 파일 목록에서 소리소문 없이 제외 |
 | **Edit** | `blindenv hook cc guard-file` | 시크릿 파일 및 `blindenv.yml` 수정 차단 |
 | **Write** | `blindenv hook cc guard-file` | 시크릿 파일 및 `blindenv.yml` 쓰기 차단 |
 
@@ -235,7 +237,7 @@ blindenv run '<command>'              시크릿 격리 + 출력 마스킹으로 
 blindenv check-file <path>            파일 차단 여부 확인 (exit 2 = 차단됨)
 blindenv has-config                   시크릿 설정이 있으면 exit 0, 없으면 1
 blindenv hook cc <hook>               Claude Code PreToolUse 훅
-                                       bash | read | grep | guard-file
+                                       bash | read | grep | glob | guard-file
 ```
 
 ---

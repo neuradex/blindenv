@@ -58,7 +58,8 @@ No matter what the agent tries, it cannot see your secrets:
 |---|---|
 | Read `.env` with Read tool | **Blocked** — file access denied |
 | `cat .env` in Bash | **Blocked** — secret file inaccessible |
-| `grep API_KEY .env` | **Blocked** — search in secret files denied |
+| `grep API_KEY .env` | **Excluded** — secret files silently omitted from search results |
+| `Glob **/.env*` to discover secret files | **Excluded** — secret files silently omitted from file listings |
 | Copy `.env` to `tmp.txt`, read the copy | **Blocked** — content-aware scan detects secret values |
 | `echo $API_KEY` to print the value | Prints `[REDACTED]` |
 | Edit `blindenv.yml` to disable rules | **Blocked** — config is tamper-proof |
@@ -159,25 +160,25 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 |---|-------|-------------|
 | 1 | **Subprocess isolation** | Secrets exist only in the subprocess environment — never in the agent's context |
 | 2 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[REDACTED]` |
-| 3 | **File blocking** | Agent cannot Read, Grep, Edit, or Write files listed in `secret_files` |
+| 3 | **File blocking** | Secret files are blocked from Read/Edit/Write and silently excluded from Grep/Glob results |
 | 4 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
 | 5 | **Content-aware blocking** | Files containing secret values are blocked regardless of path — copying or renaming won't help |
 
 ### Claude Code hooks
 
-With the plugin installed, five PreToolUse hooks guard every agent action:
+With the plugin installed, six PreToolUse hooks guard every agent action:
 
 ```
 ┌─ blindenv.yml ──────────────────────────────────────┐
 │                                                      │
-│  Bash hook          Read/Grep hook    Edit/Write hook│
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ Rewrite cmd   │  │ Block secret │  │ Block      │ │
-│  │ → blindenv    │  │ file access  │  │ secret     │ │
-│  │   run '...'   │  │              │  │ files +    │ │
-│  │ Inject secrets│  │              │  │ config     │ │
-│  │ Redact output │  │              │  │            │ │
-│  └──────────────┘  └──────────────┘  └────────────┘ │
+│  Bash hook        Read hook       Grep/Glob hook    Edit/Write hook│
+│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────┐ │
+│  │ Rewrite cmd  │  │ Block      │  │ Inject !globs│  │ Block      │ │
+│  │ → blindenv   │  │ secret     │  │ secret files │  │ secret     │ │
+│  │   run '...'  │  │ file       │  │ silently     │  │ files +    │ │
+│  │ Inject secret│  │ access     │  │ excluded     │  │ config     │ │
+│  │ Redact output│  │            │  │              │  │            │ │
+│  └─────────────┘  └────────────┘  └──────────────┘  └────────────┘ │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -186,7 +187,8 @@ With the plugin installed, five PreToolUse hooks guard every agent action:
 |------|------|----------|
 | **Bash** | `blindenv hook cc bash` | Rewrites command to `blindenv run '...'` — secrets injected, output redacted |
 | **Read** | `blindenv hook cc read` | Blocks read access to secret files |
-| **Grep** | `blindenv hook cc grep` | Blocks search in secret files |
+| **Grep** | `blindenv hook cc grep` | Injects exclusion globs — secret files silently omitted from search results |
+| **Glob** | `blindenv hook cc glob` | Injects exclusion patterns — secret files silently omitted from file listings |
 | **Edit** | `blindenv hook cc guard-file` | Blocks edits to secret files and `blindenv.yml` |
 | **Write** | `blindenv hook cc guard-file` | Blocks writes to secret files and `blindenv.yml` |
 
@@ -235,7 +237,7 @@ blindenv run '<command>'              Execute with secret isolation + output red
 blindenv check-file <path>            Check if file is blocked (exit 2 = blocked)
 blindenv has-config                   Exit 0 if config with secrets exists, 1 otherwise
 blindenv hook cc <hook>               Claude Code PreToolUse hooks
-                                       bash | read | grep | guard-file
+                                       bash | read | grep | glob | guard-file
 ```
 
 ---
