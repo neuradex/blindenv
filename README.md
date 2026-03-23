@@ -39,6 +39,7 @@ blindenv lets AI agents **use** your API keys, database credentials, and tokens 
 - **Output redaction** — Scans all stdout/stderr and replaces secret values with `[REDACTED]` before the agent sees it.
 - **File blocking** — Prevents agents from reading, searching, or editing your `.env` files and credentials.
 - **Config protection** — Agents cannot modify `blindenv.yml`. The rules are tamper-proof.
+- **Content-aware blocking** — Even if a secret file is copied or renamed, any file containing a secret value is blocked. Path evasion doesn't work.
 
 ```
 Agent writes:    curl -H "Authorization: $API_KEY" https://api.example.com
@@ -143,6 +144,7 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 | 2 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[REDACTED]` |
 | 3 | **File blocking** | Agent cannot Read, Grep, Edit, or Write files listed in `secret_files` |
 | 4 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
+| 5 | **Content-aware blocking** | Files containing secret values are blocked regardless of path — copying or renaming won't help |
 
 ### Claude Code hooks
 
