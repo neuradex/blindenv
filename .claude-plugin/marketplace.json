@@ -1,0 +1,9 @@
+{
+  "source": "./",
+  "repository": "https://github.com/neuradex/blindenv",
+  "binary": {
+    "name": "blindenv",
+    "releases": "https://github.com/neuradex/blindenv/releases",
+    "install_script": "scripts/install.sh"
+  }
+}
