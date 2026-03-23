@@ -229,6 +229,12 @@ Your AI agent needs your API key. So you paste it into the chat. Or you put it i
 
 Either way, the secret is now in the agent's context — one prompt injection away from leaking. The agent doesn't need to be malicious. It just needs to be tricked.
 
+**"But I opted out of training."** — Maybe. Your provider may not use your data for training, and may delete it after the retention period as promised. But between the moment your secret hits their server and the moment it's deleted, anything can happen. A breach, a subpoena, an internal incident, a misconfigured backup. You don't control that timeline.
+
+And unlike other services, what's stored here isn't just a password in isolation — it's your credential **with full context**. The conversation contains what the key is for, which service it accesses, how the API is called, what infrastructure it connects to. If that record is ever compromised, it's not just a leaked key. It's a complete playbook for exploitation.
+
+The only real defense is to never send the secret in the first place.
+
 blindenv solves this structurally. Not through prompts. Not through trust. Through isolation.
 
 ---
