@@ -65,7 +65,7 @@ Done. Every Bash command is now routed through blindenv. Secret files are blocke
 ### Build from source
 
 ```bash
-go install github.com/neuradex-labs/blindenv@latest
+go install github.com/neuradex/blindenv@latest
 ```
 
 ### Platform support

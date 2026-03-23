@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/neuradex-labs/blindenv/config"
+	"github.com/neuradex/blindenv/config"
 )
 
 const maxFileScanSize = 1024 * 1024 // 1MB

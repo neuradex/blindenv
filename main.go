@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/neuradex-labs/blindenv/cmd"
+	"github.com/neuradex/blindenv/cmd"
 )
 
 func main() {

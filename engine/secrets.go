@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/neuradex-labs/blindenv/config"
+	"github.com/neuradex/blindenv/config"
 )
 
 var envLineRe = regexp.MustCompile(`^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$`)

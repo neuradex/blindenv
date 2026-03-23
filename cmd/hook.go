@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/neuradex-labs/blindenv/config"
-	"github.com/neuradex-labs/blindenv/engine"
-	"github.com/neuradex-labs/blindenv/provider"
-	"github.com/neuradex-labs/blindenv/provider/cc"
+	"github.com/neuradex/blindenv/config"
+	"github.com/neuradex/blindenv/engine"
+	"github.com/neuradex/blindenv/provider"
+	"github.com/neuradex/blindenv/provider/cc"
 )
 
 func hookCmd() error {

@@ -1,4 +1,4 @@
-module github.com/neuradex-labs/blindenv
+module github.com/neuradex/blindenv
 
 go 1.24.1
 

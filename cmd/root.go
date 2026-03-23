@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/neuradex-labs/blindenv/config"
-	"github.com/neuradex-labs/blindenv/engine"
+	"github.com/neuradex/blindenv/config"
+	"github.com/neuradex/blindenv/engine"
 )
 
 const version = "0.1.0"
