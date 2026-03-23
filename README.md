@@ -62,15 +62,9 @@ secret_files:
 
 Done. Every Bash command is now routed through blindenv. Secret files are blocked from all agent tools.
 
-### Standalone install
-
-If you want to use blindenv outside of Claude Code:
+### Build from source
 
 ```bash
-# From GitHub Releases
-curl -fsSL https://raw.githubusercontent.com/neuradex/blindenv/main/scripts/install.sh | sh
-
-# Or build from source
 go install github.com/neuradex-labs/blindenv@latest
 ```
 
@@ -82,6 +76,8 @@ go install github.com/neuradex-labs/blindenv@latest
 | macOS | Intel (amd64) | Supported |
 | Linux | x86_64 (amd64) | Supported |
 | Linux | ARM (arm64) | Supported |
+| Windows | x86_64 (amd64) | Supported |
+| Windows | ARM64 | Supported |
 
 ---
 

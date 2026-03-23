@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/neuradex-labs/blindenv/config"
@@ -15,7 +16,12 @@ func Run(cfg *config.Config, command string) int {
 	secrets := ResolveSecrets(cfg)
 	env := BuildSanitizedEnv(cfg, secrets)
 
-	cmd := exec.Command("bash", "-c", command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/C", command)
+	} else {
+		cmd = exec.Command("bash", "-c", command)
+	}
 	cmd.Env = env
 	cmd.Stdin = os.Stdin
 
