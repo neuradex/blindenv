@@ -38,7 +38,7 @@ blindenv lets AI agents **use** your API keys, database credentials, and tokens 
 
 - **Secret injection** — Resolves `$VAR` references in an isolated subprocess. The agent writes `$API_KEY`, the real value is injected behind the scenes.
 - **Output redaction** — Scans all stdout/stderr and replaces secret values with `[REDACTED]` before the agent sees it.
-- **File blocking** — Prevents agents from reading, searching, or editing your `.env` files and credentials.
+- **File invisibility** — Secret files return "does not exist" for reads/edits and are silently excluded from searches and listings. The agent doesn't know they're there.
 - **Config protection** — Agents cannot modify `blindenv.yml`. The rules are tamper-proof.
 - **Content-aware blocking** — Even if a secret file is copied or renamed, any file containing a secret value is blocked. Path evasion doesn't work.
 
@@ -54,18 +54,18 @@ Agent receives:  {"result": "ok", "token": "[REDACTED]"}
 
 No matter what the agent tries, it cannot see your secrets:
 
-| Agent attempts | Result |
+| Agent attempts | What the agent sees |
 |---|---|
-| Read `.env` with Read tool | **Blocked** — file access denied |
-| `cat .env` in Bash | **Blocked** — secret file inaccessible |
-| `grep API_KEY .env` | **Excluded** — secret files silently omitted from search results |
-| `Glob **/.env*` to discover secret files | **Excluded** — secret files silently omitted from file listings |
-| Copy `.env` to `tmp.txt`, read the copy | **Blocked** — content-aware scan detects secret values |
-| `echo $API_KEY` to print the value | Prints `[REDACTED]` |
-| Edit `blindenv.yml` to disable rules | **Blocked** — config is tamper-proof |
-| Rename `.env` to bypass path checks | **Blocked** — content blocking is path-independent |
+| Read `.env` with Read tool | `File does not exist` |
+| Edit or Write to `.env` | `File does not exist` |
+| `grep API_KEY .env` | No results (secret files silently excluded) |
+| `Glob **/.env*` to discover files | No results (secret files silently excluded) |
+| `cat .env` in Bash | Secret file inaccessible in subprocess |
+| Copy `.env` to `tmp.txt`, read the copy | `File does not exist` (content-aware scan) |
+| `echo $API_KEY` to print the value | `[REDACTED]` |
+| Edit `blindenv.yml` to disable rules | Blocked — config is tamper-proof |
 
-The agent gets full functionality — API calls work, deploys succeed, services respond. It just never sees the credentials that make it happen.
+The agent can't read, find, search, edit, or write secret files — because as far as it knows, **they don't exist**. Meanwhile, API calls work, deploys succeed, and services respond. The agent gets full functionality without ever seeing the credentials that make it happen.
 
 ---
 
@@ -160,7 +160,7 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 |---|-------|-------------|
 | 1 | **Subprocess isolation** | Secrets exist only in the subprocess environment — never in the agent's context |
 | 2 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[REDACTED]` |
-| 3 | **File blocking** | Secret files are blocked from Read/Edit/Write and silently excluded from Grep/Glob results |
+| 3 | **File invisibility** | Secret files return "does not exist" for Read/Edit/Write and are silently excluded from Grep/Glob |
 | 4 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
 | 5 | **Content-aware blocking** | Files containing secret values are blocked regardless of path — copying or renaming won't help |
 
@@ -171,14 +171,14 @@ With the plugin installed, six PreToolUse hooks guard every agent action:
 ```
 ┌─ blindenv.yml ──────────────────────────────────────┐
 │                                                      │
-│  Bash hook        Read hook       Grep/Glob hook    Edit/Write hook│
-│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ Rewrite cmd  │  │ Block      │  │ Inject !globs│  │ Block      │ │
-│  │ → blindenv   │  │ secret     │  │ secret files │  │ secret     │ │
-│  │   run '...'  │  │ file       │  │ silently     │  │ files +    │ │
-│  │ Inject secret│  │ access     │  │ excluded     │  │ config     │ │
-│  │ Redact output│  │            │  │              │  │            │ │
-│  └─────────────┘  └────────────┘  └──────────────┘  └────────────┘ │
+│  Bash hook        Read/Edit/Write  Grep/Glob hook    Config guard  │
+│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  ┌───────────┐ │
+│  │ Rewrite cmd  │  │ Secret     │  │ Inject !globs│  │ Block     │ │
+│  │ → blindenv   │  │ files →    │  │ secret files │  │ blindenv  │ │
+│  │   run '...'  │  │ "does not  │  │ silently     │  │ .yml      │ │
+│  │ Inject secret│  │  exist"    │  │ excluded     │  │ edits     │ │
+│  │ Redact output│  │            │  │              │  │           │ │
+│  └─────────────┘  └────────────┘  └──────────────┘  └───────────┘ │
 │                                                      │
 └──────────────────────────────────────────────────────┘
 ```
@@ -186,13 +186,13 @@ With the plugin installed, six PreToolUse hooks guard every agent action:
 | Tool | Hook | Behavior |
 |------|------|----------|
 | **Bash** | `blindenv hook cc bash` | Rewrites command to `blindenv run '...'` — secrets injected, output redacted |
-| **Read** | `blindenv hook cc read` | Blocks read access to secret files |
-| **Grep** | `blindenv hook cc grep` | Injects exclusion globs — secret files silently omitted from search results |
-| **Glob** | `blindenv hook cc glob` | Injects exclusion patterns — secret files silently omitted from file listings |
-| **Edit** | `blindenv hook cc guard-file` | Blocks edits to secret files and `blindenv.yml` |
-| **Write** | `blindenv hook cc guard-file` | Blocks writes to secret files and `blindenv.yml` |
+| **Read** | `blindenv hook cc read` | Secret files → "does not exist" (no blindenv fingerprint) |
+| **Grep** | `blindenv hook cc grep` | Injects exclusion globs — secret files silently omitted from results |
+| **Glob** | `blindenv hook cc glob` | Injects exclusion patterns — secret files silently omitted from listings |
+| **Edit** | `blindenv hook cc guard-file` | Secret files → "does not exist"; `blindenv.yml` → explicit block |
+| **Write** | `blindenv hook cc guard-file` | Secret files → "does not exist"; `blindenv.yml` → explicit block |
 
-The hooks use **exit 2** (blocking error), which works in all Claude Code permission modes. This isn't a suggestion — it's a structural gate.
+The agent never sees a "blocked" message for secret files — they simply don't exist. The only explicit block is on `blindenv.yml` itself, and only because the agent already knows blindenv is installed.
 
 ---
 
@@ -251,7 +251,7 @@ Traditional secret managers solve **storage and delivery** — where secrets liv
 | Centralized secret storage | Yes | — (uses your existing `.env`) |
 | Runtime injection into processes | Yes | Yes |
 | Output redaction | — | Yes |
-| Agent file access blocking | — | Yes |
+| File invisibility (not blocked — invisible) | — | Yes |
 | Content-aware blocking | — | Yes |
 | Config tamper-proofing | — | Yes |
 | AI agent tool hooks | — | Yes |

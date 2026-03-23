@@ -112,7 +112,12 @@ func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 }
 
 func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
-	filePath := p.ParseFilePath(stdin)
+	toolInput := p.ParseToolInput(stdin)
+	if toolInput == nil {
+		return allow
+	}
+
+	filePath, _ := toolInput["file_path"].(string)
 	if filePath == "" {
 		return allow
 	}
@@ -123,8 +128,11 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 	}
 
 	secrets := engine.ResolveSecrets(cfg)
-	if blocked, reason := engine.CheckFile(filePath, cfg, secrets); blocked {
-		return provider.HookResult{Action: provider.Block, Reason: reason}
+	if blocked, _ := engine.CheckFile(filePath, cfg, secrets); blocked {
+		// Redirect to a non-existent path so the Read tool returns
+		// "file does not exist" naturally — no blindenv fingerprint.
+		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
+		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 	}
 	return allow
 }
@@ -210,11 +218,17 @@ func buildExcludeGlobs(secretFiles []string) string {
 }
 
 func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
-	filePath := p.ParseFilePath(stdin)
+	toolInput := p.ParseToolInput(stdin)
+	if toolInput == nil {
+		return allow
+	}
+
+	filePath, _ := toolInput["file_path"].(string)
 	if filePath == "" {
 		return allow
 	}
 
+	// Config protection — agent already knows blindenv exists, so block explicitly.
 	base := filepath.Base(filePath)
 	if base == "blindenv.yml" || base == ".blindenv.yml" {
 		return provider.HookResult{
@@ -228,11 +242,10 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
+	// Secret files — pretend the file doesn't exist.
 	if engine.MatchSecretFilePath(filePath, cfg.SecretFiles) {
-		return provider.HookResult{
-			Action: provider.Block,
-			Reason: "cannot modify secret file. Ask the user to edit it directly.",
-		}
+		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
+		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 	}
 	return allow
 }
