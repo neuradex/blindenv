@@ -235,6 +235,8 @@ And unlike other services, what's stored here isn't just a password in isolation
 
 The only real defense is to never send the secret in the first place.
 
+**"Just don't give agents API keys."** — Sure. And don't give your car keys to the valet. Park three blocks away, carry your luggage in the rain, and congratulate yourself on your security posture. The point of an AI agent is to do real work — deploy code, call APIs, access services. An agent without credentials is a very expensive autocomplete. The goal isn't to stop using keys. It's to use them safely.
+
 blindenv solves this structurally. Not through prompts. Not through trust. Through isolation.
 
 ---
