@@ -23,6 +23,4 @@ purge:
 	@echo "=== Removing PATH entries from shell rc ==="
 	@sed -i '' '/\[blindenv\] plugin bin/d' $(HOME)/.zshrc 2>/dev/null || true
 	@sed -i '' '/\[blindenv\] plugin bin/d' $(HOME)/.bashrc 2>/dev/null || true
-	@echo "=== Removing blindenv.yml from current directory ==="
-	rm -f ./blindenv.yml
 	@echo "=== Done. blindenv fully purged. ==="
