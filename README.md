@@ -138,27 +138,9 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Agent Context (no secrets)                         │
-│                                                     │
-│  "curl -H 'Authorization: $API_KEY' example.com"   │
-│          │                                          │
-│          ▼                                          │
-│  ┌─────────────────────────────────────┐            │
-│  │  blindenv proxy                     │            │
-│  │  ┌──────────────┐                  │            │
-│  │  │ Resolve       │ API_KEY=sk-a1b2 │            │
-│  │  │ Isolate       │ subprocess only │            │
-│  │  │ Execute       │ real curl runs  │            │
-│  │  │ Redact        │ sk-a1b2→[REDACTED] │         │
-│  │  └──────────────┘                  │            │
-│  └─────────────────────────────────────┘            │
-│          │                                          │
-│          ▼                                          │
-│  {"result": "ok", "token": "[REDACTED]"}            │
-└─────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="./docs/blindenv-architecture-light.svg" alt="blindenv defense architecture" />
+</p>
 
 ### Defense layers
 
@@ -174,20 +156,9 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 
 With the plugin installed, six PreToolUse hooks guard every agent action:
 
-```
-┌─ blindenv.yml ──────────────────────────────────────┐
-│                                                      │
-│  Bash hook        Read/Edit/Write  Grep/Glob hook    Config guard  │
-│  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  ┌───────────┐ │
-│  │ Rewrite cmd  │  │ Secret     │  │ Inject !globs│  │ Block     │ │
-│  │ → blindenv   │  │ files →    │  │ secret files │  │ blindenv  │ │
-│  │   run '...'  │  │ "does not  │  │ silently     │  │ .yml      │ │
-│  │ Inject secret│  │  exist"    │  │ excluded     │  │ edits     │ │
-│  │ Redact output│  │            │  │              │  │           │ │
-│  └─────────────┘  └────────────┘  └──────────────┘  └───────────┘ │
-│                                                      │
-└──────────────────────────────────────────────────────┘
-```
+<p align="center">
+  <img src="./docs/blindenv-hooks-light.svg" alt="Claude Code hook architecture" />
+</p>
 
 | Tool | Hook | Behavior |
 |------|------|----------|

@@ -13,6 +13,10 @@ import (
 	"github.com/neuradex/blindenv/internal/provider/cc"
 )
 
+// nonexistentPath is the sentinel path used to make secret files invisible.
+// The agent sees "file does not exist" instead of a block message.
+const nonexistentPath = "/dev/null/.blindenv-nonexistent"
+
 func hookCmd() error {
 	if len(os.Args) < 4 {
 		fmt.Fprintln(os.Stderr, "usage: blindenv hook <platform> <hook-name>")
@@ -94,6 +98,24 @@ func respond(p provider.Provider, result provider.HookResult) {
 	}
 }
 
+// --- Shared helpers ---
+
+// loadActiveConfig loads config and returns nil if absent or no secrets configured.
+func loadActiveConfig() *config.Config {
+	cfg, err := config.Load()
+	if err != nil || cfg == nil || !cfg.HasSecrets() {
+		return nil
+	}
+	return cfg
+}
+
+// redirectToNonexistent rewrites the file_path in toolInput so the agent
+// sees "file does not exist" instead of a block message.
+func redirectToNonexistent(toolInput map[string]interface{}) provider.HookResult {
+	toolInput["file_path"] = nonexistentPath
+	return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+}
+
 // --- Hook logic (platform-independent) ---
 
 func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
@@ -102,8 +124,7 @@ func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
-	cfg, err := config.Load()
-	if err != nil || cfg == nil || !cfg.HasSecrets() {
+	if cfg := loadActiveConfig(); cfg == nil {
 		return allow
 	}
 
@@ -130,8 +151,8 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
-	cfg, err := config.Load()
-	if err != nil || cfg == nil || !cfg.HasSecrets() {
+	cfg := loadActiveConfig()
+	if cfg == nil {
 		return allow
 	}
 
@@ -139,15 +160,13 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 
 	// Fast path: check path match and cache dir without resolving secrets.
 	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
-		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
-		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+		return redirectToNonexistent(toolInput)
 	}
 
 	// Slow path: content scan — only resolve secrets when path checks pass.
 	secrets := engine.ResolveSecrets(cfg)
 	if blocked, _ := engine.CheckFileForSecrets(absPath, secrets); blocked {
-		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
-		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+		return redirectToNonexistent(toolInput)
 	}
 	return allow
 }
@@ -158,16 +177,22 @@ func hookGrep(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
-	cfg, err := config.Load()
-	if err != nil || cfg == nil || !cfg.HasSecrets() {
+	cfg := loadActiveConfig()
+	if cfg == nil {
 		return allow
 	}
 
 	// Block if path targets a secret file/dir.
 	searchPath, _ := toolInput["path"].(string)
 	if searchPath != "" {
+		absPath, _ := filepath.Abs(searchPath)
+		// Fast path: path-only checks first.
+		if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
+			return provider.HookResult{Action: provider.Block, Reason: "file is listed in secret_files"}
+		}
+		// Slow path: content scan.
 		secrets := engine.ResolveSecrets(cfg)
-		if blocked, reason := engine.CheckFile(searchPath, cfg, secrets); blocked {
+		if blocked, reason := engine.CheckFileForSecrets(absPath, secrets); blocked {
 			return provider.HookResult{Action: provider.Block, Reason: reason}
 		}
 	}
@@ -194,8 +219,8 @@ func hookGlob(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
-	cfg, err := config.Load()
-	if err != nil || cfg == nil || !cfg.HasSecrets() {
+	cfg := loadActiveConfig()
+	if cfg == nil {
 		return allow
 	}
 
@@ -254,8 +279,8 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 		}
 	}
 
-	cfg, err := config.Load()
-	if err != nil || cfg == nil || !cfg.HasSecrets() {
+	cfg := loadActiveConfig()
+	if cfg == nil {
 		return allow
 	}
 
@@ -263,8 +288,7 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 
 	// Secret files or cache dir — pretend the file doesn't exist.
 	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
-		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
-		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+		return redirectToNonexistent(toolInput)
 	}
 	return allow
 }

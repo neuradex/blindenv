@@ -17,7 +17,11 @@ func New() *Provider { return &Provider{} }
 func (p *Provider) Name() string { return "cc" }
 
 func (p *Provider) ParseBashCommand(stdin []byte) string {
-	return parseField(stdin, "command")
+	if m := p.ParseToolInput(stdin); m != nil {
+		s, _ := m["command"].(string)
+		return s
+	}
+	return ""
 }
 
 func (p *Provider) FormatAllow() []byte {
@@ -50,23 +54,4 @@ func (p *Provider) FormatModifiedInput(input map[string]interface{}) []byte {
 	}
 	data, _ := json.Marshal(out)
 	return data
-}
-
-func parseField(stdin []byte, field string) string {
-	var input hookInput
-	if err := json.Unmarshal(stdin, &input); err != nil {
-		return ""
-	}
-	if input.ToolInput == nil {
-		return ""
-	}
-	val, ok := input.ToolInput[field]
-	if !ok {
-		return ""
-	}
-	s, ok := val.(string)
-	if !ok {
-		return ""
-	}
-	return s
 }

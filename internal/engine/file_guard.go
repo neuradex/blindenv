@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,15 +29,19 @@ func CheckFileForSecrets(absPath string, secrets map[string]string) (blocked boo
 		return false, ""
 	}
 
-	info, err := os.Stat(absPath)
-	if err != nil || info.Size() > maxFileScanSize {
-		return false, ""
-	}
-
-	content, err := os.ReadFile(absPath)
+	f, err := os.Open(absPath)
 	if err != nil {
 		return false, ""
 	}
+	defer f.Close()
+
+	// Read up to maxFileScanSize; skip files larger than the limit.
+	buf := make([]byte, maxFileScanSize+1)
+	n, _ := io.ReadFull(f, buf)
+	if n > maxFileScanSize {
+		return false, ""
+	}
+	content := buf[:n]
 
 	for name, value := range secrets {
 		if bytes.Contains(content, []byte(value)) {
