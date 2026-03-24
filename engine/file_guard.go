@@ -47,12 +47,28 @@ func CheckFileForSecrets(absPath string, secrets map[string]string) (blocked boo
 	return false, ""
 }
 
-// CheckFile combines path matching and content scanning.
+// CheckFile combines path matching, cache protection, and content scanning.
 func CheckFile(filePath string, cfg *config.Config, secrets map[string]string) (blocked bool, reason string) {
 	absPath, _ := filepath.Abs(filePath)
 
 	if MatchSecretFilePath(absPath, cfg.SecretFiles) {
 		return true, "file is listed in secret_files"
 	}
+
+	// Protect the cache directory — it contains copies of secret files.
+	if isInsideCacheDir(absPath) {
+		return true, "file is in secret cache"
+	}
+
 	return CheckFileForSecrets(absPath, secrets)
+}
+
+// isInsideCacheDir checks if a path is inside ~/.cache/blindenv/.
+func isInsideCacheDir(absPath string) bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	cacheDir := filepath.Join(home, ".cache", "blindenv")
+	return absPath == cacheDir || strings.HasPrefix(absPath, cacheDir+string(filepath.Separator))
 }

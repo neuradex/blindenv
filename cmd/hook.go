@@ -207,13 +207,15 @@ func hookGlob(p provider.Provider, stdin []byte) provider.HookResult {
 	return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 }
 
-// buildExcludeGlobs returns ripgrep-style negation globs for secret files.
+// buildExcludeGlobs returns ripgrep-style negation globs for secret files
+// and the cache directory.
 func buildExcludeGlobs(secretFiles []string) string {
 	var parts []string
 	for _, sf := range secretFiles {
-		expanded := filepath.Base(sf)
-		parts = append(parts, "!"+expanded)
+		parts = append(parts, "!"+filepath.Base(sf))
 	}
+	// Also exclude the cache directory.
+	parts = append(parts, "!.cache/blindenv/**")
 	return strings.Join(parts, ",")
 }
 
