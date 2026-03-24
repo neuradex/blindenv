@@ -23,6 +23,8 @@ func Execute() error {
 		return checkFileCmd()
 	case "has-config":
 		return hasConfigCmd()
+	case "init":
+		return initCmd()
 	case "hook":
 		return hookCmd()
 	case "cache-restore":
@@ -102,6 +104,20 @@ func hasConfigCmd() error {
 	return nil
 }
 
+func initCmd() error {
+	// If config already exists anywhere up the tree, do nothing.
+	if path := config.FindConfigFile(""); path != "" {
+		return nil
+	}
+
+	path, err := config.CreateDefault()
+	if err != nil {
+		return fmt.Errorf("failed to create config: %w", err)
+	}
+	fmt.Printf("created %s\n", path)
+	return nil
+}
+
 func cacheRestoreCmd() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -152,6 +168,7 @@ func printUsage() {
 	fmt.Print(`blindenv - Secret isolation for AI coding agents
 
 Usage:
+  blindenv init                   Create blindenv.yml in current directory (if not found)
   blindenv run '<command>'       Execute command with secret isolation + output redaction
   blindenv check-file <path>     Check if a file contains or exposes secrets
   blindenv has-config            Exit 0 if env mediation config exists, 1 otherwise

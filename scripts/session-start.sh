@@ -39,47 +39,6 @@ if [ ! -x "$BIN" ]; then
 fi
 
 # ── 2. Auto-create blindenv.yml if not found ─────────────────────
-DIR=$(pwd)
-FOUND=""
-while true; do
-  if [ -f "$DIR/blindenv.yml" ]; then
-    FOUND="$DIR/blindenv.yml"
-    break
-  fi
-  PARENT=$(dirname "$DIR")
-  if [ "$PARENT" = "$DIR" ]; then
-    break
-  fi
-  DIR="$PARENT"
-done
-
-# Also check ~/.blindenv.yml
-if [ -z "$FOUND" ] && [ -f "$HOME/.blindenv.yml" ]; then
-  FOUND="$HOME/.blindenv.yml"
-fi
-
-if [ -z "$FOUND" ]; then
-  BLINDENV_ID=$(head -c 8 /dev/urandom | od -A n -t x1 | tr -d ' \n')
-  cat > "$(pwd)/blindenv.yml" << YAML
-# blindenv.yml — auto-generated, edit anytime
-# Docs: https://github.com/neuradex/blindenv
-
-id: ${BLINDENV_ID}
-
-secret_files:        # .env files — auto-parsed, paths blocked from agent
-  - .env
-  # - .env.local
-  # - ~/.aws/credentials
-
-# inject:            # env vars from host process — injected + redacted
-#   - CI_TOKEN
-#   - DEPLOY_KEY
-
-# passthrough:       # non-secret vars — explicit allowlist (strict mode)
-#   - PATH
-#   - HOME
-#   - LANG
-YAML
-fi
+"$BIN" init
 
 exit 0

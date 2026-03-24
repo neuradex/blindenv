@@ -81,6 +81,36 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
+// CreateDefault creates a blindenv.yml with a unique ID in the current directory.
+func CreateDefault() (string, error) {
+	cwd, _ := os.Getwd()
+	path := filepath.Join(cwd, "blindenv.yml")
+
+	content := `# blindenv.yml — auto-generated, edit anytime
+# Docs: https://github.com/neuradex/blindenv
+
+id: ` + generateID() + `
+
+secret_files:        # .env files — auto-parsed, paths blocked from agent
+  - .env
+  # - .env.local
+  # - ~/.aws/credentials
+
+# inject:            # env vars from host process — injected + redacted
+#   - CI_TOKEN
+#   - DEPLOY_KEY
+
+# passthrough:       # non-secret vars — explicit allowlist (strict mode)
+#   - PATH
+#   - HOME
+#   - LANG
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
 func generateID() string {
 	b := make([]byte, 8)
 	rand.Read(b)
