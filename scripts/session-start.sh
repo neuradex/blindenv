@@ -1,7 +1,8 @@
 #!/bin/bash
 # blindenv SessionStart hook.
 # 1. Ensure binary is installed
-# 2. Auto-create blindenv.yml if not found
+# 2. Symlink to ~/.local/bin for CLI access
+# 3. Auto-create blindenv.yml if not found
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 BIN_DIR="$PLUGIN_ROOT/bin"
@@ -38,7 +39,15 @@ if [ ! -x "$BIN" ]; then
   chmod +x "$BIN"
 fi
 
-# ── 2. Auto-create blindenv.yml if not found ─────────────────────
+# ── 2. Symlink to ~/.local/bin if not already there ──────────────
+LOCAL_BIN="$HOME/.local/bin"
+LINK="$LOCAL_BIN/blindenv"
+if [ ! -L "$LINK" ] || [ "$(readlink "$LINK")" != "$BIN" ]; then
+  mkdir -p "$LOCAL_BIN"
+  ln -sf "$BIN" "$LINK"
+fi
+
+# ── 3. Auto-create blindenv.yml if not found ─────────────────────
 "$BIN" init
 
 exit 0
