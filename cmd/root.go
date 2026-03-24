@@ -8,7 +8,8 @@ import (
 	"github.com/neuradex/blindenv/internal/engine"
 )
 
-const version = "0.3.0"
+// version is set at build time via ldflags.
+var version = "dev"
 
 func Execute() error {
 	if len(os.Args) < 2 {
