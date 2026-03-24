@@ -2,8 +2,7 @@ package engine
 
 import (
 	"bufio"
-	"crypto/sha256"
-	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,7 +19,7 @@ var envLineRe = regexp.MustCompile(`^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)
 // so that even if the agent destroys the originals, secrets remain available.
 func ResolveSecrets(cfg *config.Config) map[string]string {
 	// Ensure cache exists before reading.
-	EnsureSecretCache(cfg.SecretFiles)
+	EnsureSecretCache(cfg)
 
 	secrets := make(map[string]string)
 
@@ -33,7 +32,7 @@ func ResolveSecrets(cfg *config.Config) map[string]string {
 
 	// 2. Auto-derived from secret_files (read from cache)
 	for _, filePath := range cfg.SecretFiles {
-		cached := cachedSecretFilePath(filePath)
+		cached := cachedPath(cfg.ID, filePath)
 		for k, v := range parseEnvFile(cached) {
 			if _, exists := secrets[k]; !exists {
 				secrets[k] = v
@@ -44,16 +43,14 @@ func ResolveSecrets(cfg *config.Config) map[string]string {
 	return secrets
 }
 
-// EnsureSecretCache copies secret files to a safe cache directory.
-// Should be called once at session start or before first use.
-// Subsequent reads use the cached copies, so the originals can be
-// destroyed without impact.
-func EnsureSecretCache(secretFiles []string) {
-	for _, sf := range secretFiles {
+// EnsureSecretCache copies secret files to a safe cache directory keyed by
+// the config's unique ID. Subsequent reads use the cached copies, so the
+// originals can be destroyed without impact.
+func EnsureSecretCache(cfg *config.Config) {
+	for _, sf := range cfg.SecretFiles {
 		src := expandPath(sf)
-		dst := cachedSecretFilePath(sf)
+		dst := cachedPath(cfg.ID, sf)
 
-		// Skip if already cached
 		if _, err := os.Stat(dst); err == nil {
 			continue
 		}
@@ -64,14 +61,14 @@ func EnsureSecretCache(secretFiles []string) {
 		}
 
 		os.MkdirAll(filepath.Dir(dst), 0o700)
-		os.WriteFile(dst, content, 0o400) // read-only
+		os.WriteFile(dst, content, 0o400)
 	}
 }
 
 // CacheRestore copies cached secret files back to their original locations.
-func CacheRestore(secretFiles []string) (restored, skipped []string) {
-	for _, sf := range secretFiles {
-		src := cachedSecretFilePath(sf)
+func CacheRestore(cfg *config.Config) (restored, skipped []string) {
+	for _, sf := range cfg.SecretFiles {
+		src := cachedPath(cfg.ID, sf)
 		dst := expandPath(sf)
 
 		content, err := os.ReadFile(src)
@@ -91,10 +88,10 @@ func CacheRestore(secretFiles []string) (restored, skipped []string) {
 
 // CacheRefresh re-reads original secret files into the cache.
 // Use after manually editing .env files.
-func CacheRefresh(secretFiles []string) (refreshed, skipped []string) {
-	for _, sf := range secretFiles {
+func CacheRefresh(cfg *config.Config) (refreshed, skipped []string) {
+	for _, sf := range cfg.SecretFiles {
 		src := expandPath(sf)
-		dst := cachedSecretFilePath(sf)
+		dst := cachedPath(cfg.ID, sf)
 
 		content, err := os.ReadFile(src)
 		if err != nil {
@@ -103,7 +100,6 @@ func CacheRefresh(secretFiles []string) (refreshed, skipped []string) {
 		}
 
 		os.MkdirAll(filepath.Dir(dst), 0o700)
-		// Remove read-only before overwrite
 		os.Chmod(dst, 0o600)
 		if err := os.WriteFile(dst, content, 0o400); err != nil {
 			skipped = append(skipped, src)
@@ -114,19 +110,25 @@ func CacheRefresh(secretFiles []string) (refreshed, skipped []string) {
 	return
 }
 
-// cachedSecretFilePath returns the cache path for a secret file.
-// Cache lives under ~/.cache/blindenv/<hash>/<basename>.
-func cachedSecretFilePath(originalPath string) string {
+// cachedPath returns the cache path for a secret file.
+// Cache lives under ~/.cache/blindenv/<config-id>/<basename>.
+// Falls back to a hash of the original directory if no ID is set.
+func cachedPath(configID, originalPath string) string {
 	abs := expandPath(originalPath)
-
-	// Use the directory of the original file as the hash key so
-	// files from different projects don't collide.
-	dir := filepath.Dir(abs)
-	h := sha256.Sum256([]byte(dir))
-	hash := hex.EncodeToString(h[:8])
-
+	if configID == "" {
+		// Fallback for tests or configs without an ID yet.
+		configID = shortHash(filepath.Dir(abs))
+	}
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".cache", "blindenv", hash, filepath.Base(abs))
+	return filepath.Join(home, ".cache", "blindenv", configID, filepath.Base(abs))
+}
+
+func shortHash(s string) string {
+	h := uint64(0)
+	for _, c := range s {
+		h = h*31 + uint64(c)
+	}
+	return fmt.Sprintf("%016x", h)
 }
 
 // BuildSanitizedEnv builds the subprocess environment.

@@ -112,7 +112,7 @@ func cacheRestoreCmd() error {
 		os.Exit(1)
 	}
 
-	restored, skipped := engine.CacheRestore(cfg.SecretFiles)
+	restored, skipped := engine.CacheRestore(cfg)
 	for _, r := range restored {
 		fmt.Printf("restored: %s\n", r)
 	}
@@ -135,7 +135,7 @@ func cacheRefreshCmd() error {
 		os.Exit(1)
 	}
 
-	refreshed, skipped := engine.CacheRefresh(cfg.SecretFiles)
+	refreshed, skipped := engine.CacheRefresh(cfg)
 	for _, r := range refreshed {
 		fmt.Printf("refreshed: %s\n", r)
 	}

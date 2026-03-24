@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 
@@ -9,6 +11,7 @@ import (
 
 // Config represents a blindenv.yml configuration file.
 type Config struct {
+	ID          string   `yaml:"id,omitempty"`
 	Inject      []string `yaml:"inject,omitempty"`
 	Passthrough []string `yaml:"passthrough,omitempty"`
 	SecretFiles []string `yaml:"secret_files,omitempty"`
@@ -50,6 +53,7 @@ func FindConfigFile(from string) string {
 }
 
 // Load reads and parses a blindenv.yml config file.
+// If the config has no ID, one is generated and written back.
 func Load() (*Config, error) {
 	path := FindConfigFile("")
 	if path == "" {
@@ -66,5 +70,19 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	// Auto-assign ID if missing.
+	if cfg.ID == "" {
+		cfg.ID = generateID()
+		if updated, err := yaml.Marshal(&cfg); err == nil {
+			os.WriteFile(path, updated, 0o644)
+		}
+	}
+
 	return &cfg, nil
+}
+
+func generateID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }

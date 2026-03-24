@@ -59,9 +59,12 @@ if [ -z "$FOUND" ] && [ -f "$HOME/.blindenv.yml" ]; then
 fi
 
 if [ -z "$FOUND" ]; then
-  cat > "$(pwd)/blindenv.yml" << 'YAML'
+  BLINDENV_ID=$(head -c 8 /dev/urandom | od -A n -t x1 | tr -d ' \n')
+  cat > "$(pwd)/blindenv.yml" << YAML
 # blindenv.yml — auto-generated, edit anytime
 # Docs: https://github.com/neuradex/blindenv
+
+id: ${BLINDENV_ID}
 
 secret_files:        # .env files — auto-parsed, paths blocked from agent
   - .env
