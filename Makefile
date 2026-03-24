@@ -12,10 +12,10 @@ vet:
 clean:
 	rm -f ./blindenv
 
-# Remove all blindenv traces from the system (plugin cache, binary, PATH entries, config cache)
+# Reset blindenv install state for testing (run /plugin uninstall blindenv@blindenv first)
 purge:
-	@echo "=== Removing plugin cache ==="
-	rm -rf $(HOME)/.claude/plugins/cache/blindenv
+	@echo "⚠  Run '/plugin uninstall blindenv@blindenv' in Claude Code first!"
+	@echo ""
 	@echo "=== Removing secret cache ==="
 	rm -rf $(HOME)/.cache/blindenv
 	@echo "=== Removing symlink ==="
@@ -23,4 +23,6 @@ purge:
 	@echo "=== Removing PATH entries from shell rc ==="
 	@sed -i '' '/\[blindenv\] plugin bin/d' $(HOME)/.zshrc 2>/dev/null || true
 	@sed -i '' '/\[blindenv\] plugin bin/d' $(HOME)/.bashrc 2>/dev/null || true
-	@echo "=== Done. blindenv fully purged. ==="
+	@echo ""
+	@echo "=== Done. Now reinstall with: ==="
+	@echo "  /plugin install blindenv@blindenv"
