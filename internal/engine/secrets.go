@@ -65,10 +65,10 @@ func EnsureSecretCache(cfg *config.Config) {
 	}
 }
 
-// Evacuate ensures secret files are cached, then deletes the originals.
+// Stash ensures secret files are cached, then deletes the originals.
 // This makes secret files genuinely invisible to ls, find, etc.
 // Safety: never deletes an original unless the cached copy exists.
-func Evacuate(cfg *config.Config) (evacuated, skipped []string) {
+func Stash(cfg *config.Config) (stashed, skipped []string) {
 	EnsureSecretCache(cfg)
 
 	for _, sf := range cfg.SecretFiles {
@@ -81,7 +81,7 @@ func Evacuate(cfg *config.Config) (evacuated, skipped []string) {
 			continue
 		}
 
-		// Already evacuated — skip silently.
+		// Already stashed — skip silently.
 		if _, err := os.Stat(src); os.IsNotExist(err) {
 			continue
 		}
@@ -90,9 +90,44 @@ func Evacuate(cfg *config.Config) (evacuated, skipped []string) {
 			skipped = append(skipped, src)
 			continue
 		}
-		evacuated = append(evacuated, src)
+		stashed = append(stashed, src)
 	}
 	return
+}
+
+// RedactedCopy creates a temporary file with secret values replaced by [BLINDED].
+// Used by blind mode so the agent can see file structure but not secret values.
+// Returns the path to the temp file, or "" on error.
+func RedactedCopy(cfg *config.Config, absPath string) string {
+	// Read from cache first, then fall back to original.
+	var content []byte
+	for _, sf := range cfg.SecretFiles {
+		if expandPath(sf) == absPath {
+			if c, err := os.ReadFile(cachedPath(cfg.ID, sf)); err == nil {
+				content = c
+				break
+			}
+		}
+	}
+	if content == nil {
+		c, err := os.ReadFile(absPath)
+		if err != nil {
+			return ""
+		}
+		content = c
+	}
+
+	secrets := ResolveSecrets(cfg)
+	redacted := RedactSecrets(string(content), secrets)
+
+	tmpDir := filepath.Join(os.TempDir(), "blindenv-redacted", cfg.ID)
+	os.MkdirAll(tmpDir, 0o700)
+	tmpFile := filepath.Join(tmpDir, filepath.Base(absPath))
+	os.Chmod(tmpFile, 0o600) // make writable if exists from previous call
+	if err := os.WriteFile(tmpFile, []byte(redacted), 0o400); err != nil {
+		return ""
+	}
+	return tmpFile
 }
 
 // CacheRestore copies cached secret files back to their original locations.
@@ -198,7 +233,7 @@ func BuildSanitizedEnv(cfg *config.Config, secrets map[string]string) []string {
 	return result
 }
 
-// RedactSecrets replaces secret values in output with [REDACTED].
+// RedactSecrets replaces secret values in output with [BLINDED].
 // Longer values are replaced first to prevent partial match pollution.
 func RedactSecrets(output string, secrets map[string]string) string {
 	if len(secrets) == 0 {
@@ -216,7 +251,7 @@ func RedactSecrets(output string, secrets map[string]string) string {
 	})
 
 	for _, v := range vals {
-		output = strings.ReplaceAll(output, v, "[REDACTED]")
+		output = strings.ReplaceAll(output, v, "[BLINDED]")
 	}
 	return output
 }

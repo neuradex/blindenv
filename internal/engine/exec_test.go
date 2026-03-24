@@ -109,8 +109,8 @@ func TestRun_OutputRedacted_InjectVar(t *testing.T) {
 	if strings.Contains(out, "xXxTopSecretxXx") {
 		t.Errorf("secret must be redacted in stdout; got %q", out)
 	}
-	if !strings.Contains(out, "[REDACTED]") {
-		t.Errorf("expected [REDACTED] in stdout; got %q", out)
+	if !strings.Contains(out, "[BLINDED]") {
+		t.Errorf("expected [BLINDED] in stdout; got %q", out)
 	}
 }
 
@@ -130,8 +130,8 @@ func TestRun_OutputRedacted_SecretFile(t *testing.T) {
 	if strings.Contains(out, "file_secret_value") {
 		t.Errorf("file secret must be redacted; got %q", out)
 	}
-	if !strings.Contains(out, "[REDACTED]") {
-		t.Errorf("expected [REDACTED] in output; got %q", out)
+	if !strings.Contains(out, "[BLINDED]") {
+		t.Errorf("expected [BLINDED] in output; got %q", out)
 	}
 }
 
@@ -204,9 +204,9 @@ func TestRun_InjectVar_ReachesSubprocess(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d", code)
 	}
 	// The injected value IS a secret so it will be redacted, but it must have
-	// reached the subprocess (evidenced by [REDACTED] appearing rather than an
+	// reached the subprocess (evidenced by [BLINDED] appearing rather than an
 	// empty echo line).
-	if !strings.Contains(out, "[REDACTED]") {
+	if !strings.Contains(out, "[BLINDED]") {
 		t.Errorf("injected secret should reach subprocess and be redacted; got %q", out)
 	}
 }
@@ -231,8 +231,8 @@ func TestRun_SecretFileVars_Available_And_Redacted(t *testing.T) {
 	if strings.Contains(out, "run_file_secret") {
 		t.Errorf("file secret must be redacted; got %q", out)
 	}
-	if !strings.Contains(out, "[REDACTED]") {
-		t.Errorf("expected [REDACTED]; got %q", out)
+	if !strings.Contains(out, "[BLINDED]") {
+		t.Errorf("expected [BLINDED]; got %q", out)
 	}
 }
 

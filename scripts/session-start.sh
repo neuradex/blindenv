@@ -57,7 +57,7 @@ done
 # ── 3. Auto-create blindenv.yml if not found ─────────────────────
 "$BIN" init
 
-# ── 4. Evacuate secret files if configured ───────────────────────
-"$BIN" evacuate
+# ── 4. Stash secret files if configured ──────────────────────────
+"$BIN" stash
 
 exit 0

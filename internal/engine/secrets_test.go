@@ -343,8 +343,8 @@ func TestRedactSecrets_ReplacesValue(t *testing.T) {
 	if strings.Contains(got, "supersecret") {
 		t.Errorf("secret value should be redacted; got %q", got)
 	}
-	if !strings.Contains(got, "[REDACTED]") {
-		t.Errorf("expected [REDACTED] in output; got %q", got)
+	if !strings.Contains(got, "[BLINDED]") {
+		t.Errorf("expected [BLINDED] in output; got %q", got)
 	}
 }
 
@@ -358,7 +358,7 @@ func TestRedactSecrets_MultipleOccurrences(t *testing.T) {
 
 func TestRedactSecrets_LongerValueFirst(t *testing.T) {
 	// "ab" is a prefix of "abc". If "ab" is replaced first, "abc" would become
-	// "[REDACTED]c" and the longer secret would be missed. RedactSecrets must
+	// "[BLINDED]c" and the longer secret would be missed. RedactSecrets must
 	// replace longer values first.
 	secrets := map[string]string{
 		"SHORT": "ab",
@@ -413,22 +413,22 @@ func TestRedactSecrets_MultilineOutput(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Evacuate
+// Stash
 // ---------------------------------------------------------------------------
 
-func TestEvacuate_DeletesOriginalWhenCacheExists(t *testing.T) {
+func TestStash_DeletesOriginalWhenCacheExists(t *testing.T) {
 	path := writeTempEnvFile(t, "SECRET=value\n")
 
 	cfg := &config.Config{
-		ID:          "evac-test",
+		ID:          "stash-test",
 		SecretFiles: []string{path},
 	}
 	EnsureSecretCache(cfg)
 
-	evacuated, skipped := Evacuate(cfg)
+	stashed, skipped := Stash(cfg)
 
-	if len(evacuated) != 1 {
-		t.Fatalf("expected 1 evacuated, got %d", len(evacuated))
+	if len(stashed) != 1 {
+		t.Fatalf("expected 1 stashed, got %d", len(stashed))
 	}
 	if len(skipped) != 0 {
 		t.Fatalf("expected 0 skipped, got %d", len(skipped))
@@ -436,43 +436,43 @@ func TestEvacuate_DeletesOriginalWhenCacheExists(t *testing.T) {
 
 	// Original must be gone.
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Error("original file should be deleted after evacuate")
+		t.Error("original file should be deleted after stash")
 	}
 
 	// Cache must still exist.
 	cached := cachedPath(cfg.ID, path)
 	if _, err := os.Stat(cached); err != nil {
-		t.Error("cached copy should still exist after evacuate")
+		t.Error("cached copy should still exist after stash")
 	}
 }
 
-func TestEvacuate_IdempotentWhenAlreadyGone(t *testing.T) {
+func TestStash_IdempotentWhenAlreadyGone(t *testing.T) {
 	path := writeTempEnvFile(t, "SECRET=value\n")
 
 	cfg := &config.Config{
-		ID:          "evac-idem",
+		ID:          "stash-idem",
 		SecretFiles: []string{path},
 	}
 	EnsureSecretCache(cfg)
 	os.Remove(path) // already gone
 
-	evacuated, skipped := Evacuate(cfg)
+	stashed, skipped := Stash(cfg)
 
-	if len(evacuated) != 0 {
-		t.Error("should not report already-absent file as evacuated")
+	if len(stashed) != 0 {
+		t.Error("should not report already-absent file as stashed")
 	}
 	if len(skipped) != 0 {
 		t.Error("should not report already-absent file as skipped")
 	}
 }
 
-func TestEvacuate_SkipsWhenNoCacheExists(t *testing.T) {
+func TestStash_SkipsWhenNoCacheExists(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".env")
 	os.WriteFile(path, []byte("KEY=val\n"), 0o600)
 
 	cfg := &config.Config{
-		ID:          "evac-nocache-" + t.Name(),
+		ID:          "stash-nocache-" + t.Name(),
 		SecretFiles: []string{path},
 	}
 
@@ -486,10 +486,10 @@ func TestEvacuate_SkipsWhenNoCacheExists(t *testing.T) {
 		os.RemoveAll(cacheDir)
 	})
 
-	evacuated, skipped := Evacuate(cfg)
+	stashed, skipped := Stash(cfg)
 
-	if len(evacuated) != 0 {
-		t.Error("must not evacuate when cache write fails")
+	if len(stashed) != 0 {
+		t.Error("must not stash when cache write fails")
 	}
 	if len(skipped) != 1 {
 		t.Fatalf("expected 1 skipped, got %d", len(skipped))
@@ -501,20 +501,20 @@ func TestEvacuate_SkipsWhenNoCacheExists(t *testing.T) {
 	}
 }
 
-func TestEvacuate_SecretsStillResolvableAfterEvacuate(t *testing.T) {
-	path := writeTempEnvFile(t, "EVAC_KEY=evac_value\n")
+func TestStash_SecretsStillResolvableAfterStash(t *testing.T) {
+	path := writeTempEnvFile(t, "STASH_KEY=stash_value\n")
 
 	cfg := &config.Config{
-		ID:          "evac-resolve",
+		ID:          "stash-resolve",
 		SecretFiles: []string{path},
 	}
 
-	Evacuate(cfg)
+	Stash(cfg)
 
 	// Original is gone, but secrets should still resolve from cache.
 	secrets := ResolveSecrets(cfg)
-	if secrets["EVAC_KEY"] != "evac_value" {
-		t.Errorf("expected evac_value, got %q", secrets["EVAC_KEY"])
+	if secrets["STASH_KEY"] != "stash_value" {
+		t.Errorf("expected stash_value, got %q", secrets["STASH_KEY"])
 	}
 }
 

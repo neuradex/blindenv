@@ -28,8 +28,8 @@ func Execute() error {
 		return initCmd()
 	case "hook":
 		return hookCmd()
-	case "evacuate":
-		return evacuateCmd()
+	case "stash":
+		return stashCmd()
 	case "cache-restore":
 		return cacheRestoreCmd()
 	case "cache-refresh":
@@ -121,21 +121,21 @@ func initCmd() error {
 	return nil
 }
 
-func evacuateCmd() error {
+func stashCmd() error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("config error: %w", err)
 	}
-	if cfg == nil || len(cfg.SecretFiles) == 0 || cfg.EffectiveMode() != config.ModeEvacuate {
+	if cfg == nil || len(cfg.SecretFiles) == 0 || cfg.EffectiveMode() != config.ModeStash {
 		return nil
 	}
 
-	evacuated, skipped := engine.Evacuate(cfg)
-	for _, e := range evacuated {
-		fmt.Printf("evacuated: %s\n", e)
+	stashed, skipped := engine.Stash(cfg)
+	for _, s := range stashed {
+		fmt.Printf("stashed: %s\n", s)
 	}
-	for _, s := range skipped {
-		fmt.Printf("skipped (no cache): %s\n", s)
+	for _, sk := range skipped {
+		fmt.Printf("skipped (no cache): %s\n", sk)
 	}
 	return nil
 }
@@ -194,7 +194,7 @@ Usage:
   blindenv run '<command>'       Execute command with secret isolation + output redaction
   blindenv check-file <path>     Check if a file contains or exposes secrets
   blindenv has-config            Exit 0 if env mediation config exists, 1 otherwise
-  blindenv evacuate              Delete secret files from disk (evacuate mode only)
+  blindenv stash                 Move secret files to cache, delete originals (stash mode only)
   blindenv cache-restore         Restore secret files from cache
   blindenv cache-refresh         Re-cache secret files (after you edit .env)
   blindenv version               Show version
@@ -203,7 +203,7 @@ Usage:
 Config:
   Place blindenv.yml in your project root or ~/.blindenv.yml
 
-  mode: stealth        # block (default) | stealth | evacuate
+  mode: block           # blind (default) | block | stash
   inject:              # env vars from process env - injected + redacted
     - API_KEY
   passthrough:         # non-secret vars - explicit allowlist
@@ -213,13 +213,13 @@ Config:
     - .env
 
 Security modes:
-  block      Explicit deny + output redaction (default)
-  stealth    Files appear nonexistent — agent doesn't know they're there
-  evacuate   Files physically removed from disk — even ls reveals nothing
+  blind      Files readable but values show [BLINDED] (default)
+  block      Explicit deny — agent cannot access secret files
+  stash      Files physically removed from disk — even ls reveals nothing
 
 Example:
   blindenv run 'curl -H "Authorization: $API_KEY" https://api.example.com'
-  # Agent sees: {"result": "ok", "token": "[REDACTED]"}
+  # Agent sees: {"result": "ok", "token": "[BLINDED]"}
 
 `)
 }

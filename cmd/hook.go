@@ -109,14 +109,23 @@ func loadActiveConfig() *config.Config {
 	return cfg
 }
 
-// blockOrHide returns an explicit block in block mode, or redirects the given
-// field to a nonexistent path in stealth/evacuate modes.
-func blockOrHide(cfg *config.Config, toolInput map[string]interface{}, field, reason string) provider.HookResult {
-	if cfg.EffectiveMode() == config.ModeBlock {
-		return provider.HookResult{Action: provider.Block, Reason: reason}
+// blockOrVanish returns an explicit block in block/blind modes,
+// or redirects the field to a nonexistent path in stash mode.
+func blockOrVanish(cfg *config.Config, toolInput map[string]interface{}, field, reason string) provider.HookResult {
+	if cfg.EffectiveMode() == config.ModeStash {
+		toolInput[field] = nonexistentPath
+		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 	}
-	toolInput[field] = nonexistentPath
-	return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+	return provider.HookResult{Action: provider.Block, Reason: reason}
+}
+
+// redirectToRedacted creates a redacted copy of a secret file and redirects to it (blind mode).
+func redirectToRedacted(cfg *config.Config, toolInput map[string]interface{}, absPath string) provider.HookResult {
+	if redacted := engine.RedactedCopy(cfg, absPath); redacted != "" {
+		toolInput["file_path"] = redacted
+		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+	}
+	return provider.HookResult{Action: provider.Block, Reason: "file is listed in secret_files"}
 }
 
 // --- Hook logic (platform-independent) ---
@@ -161,15 +170,28 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 
 	absPath, _ := filepath.Abs(filePath)
 
+	mode := cfg.EffectiveMode()
+
 	// Fast path: check path match and cache dir without resolving secrets.
-	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
-		return blockOrHide(cfg, toolInput, "file_path", "file is listed in secret_files")
+	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) {
+		switch mode {
+		case config.ModeBlind:
+			return redirectToRedacted(cfg, toolInput, absPath)
+		case config.ModeStash:
+			toolInput["file_path"] = nonexistentPath
+			return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+		default: // block
+			return provider.HookResult{Action: provider.Block, Reason: "file is listed in secret_files"}
+		}
+	}
+	if engine.IsInsideCacheDir(absPath) {
+		return blockOrVanish(cfg, toolInput, "file_path", "file is in secret cache")
 	}
 
 	// Slow path: content scan — only resolve secrets when path checks pass.
 	secrets := engine.ResolveSecrets(cfg)
 	if blocked, reason := engine.CheckFileForSecrets(absPath, secrets); blocked {
-		return blockOrHide(cfg, toolInput, "file_path", reason)
+		return blockOrVanish(cfg, toolInput, "file_path", reason)
 	}
 	return allow
 }
@@ -191,12 +213,12 @@ func hookGrep(p provider.Provider, stdin []byte) provider.HookResult {
 		absPath, _ := filepath.Abs(searchPath)
 		// Fast path: path-only checks first.
 		if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
-			return blockOrHide(cfg, toolInput, "path", "file is listed in secret_files")
+			return blockOrVanish(cfg, toolInput, "path", "file is listed in secret_files")
 		}
 		// Slow path: content scan.
 		secrets := engine.ResolveSecrets(cfg)
 		if blocked, reason := engine.CheckFileForSecrets(absPath, secrets); blocked {
-			return blockOrHide(cfg, toolInput, "path", reason)
+			return blockOrVanish(cfg, toolInput, "path", reason)
 		}
 	}
 
@@ -230,7 +252,7 @@ func hookGlob(p provider.Provider, stdin []byte) provider.HookResult {
 	// Block or redirect if path targets a secret directory.
 	searchPath, _ := toolInput["path"].(string)
 	if searchPath != "" && engine.MatchSecretFilePath(searchPath, cfg.SecretFiles) {
-		return blockOrHide(cfg, toolInput, "path", "cannot list files in secret directory")
+		return blockOrVanish(cfg, toolInput, "path", "cannot list files in secret directory")
 	}
 
 	// Inject negation patterns to hide secret files from results.
@@ -286,9 +308,10 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 
 	absPath, _ := filepath.Abs(filePath)
 
-	// Secret files or cache dir — block or hide depending on mode.
+	// Secret files or cache dir — block or vanish depending on mode.
+	// Edit/Write always block in block/blind modes (agent can read but not modify).
 	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
-		return blockOrHide(cfg, toolInput, "file_path", "file is listed in secret_files")
+		return blockOrVanish(cfg, toolInput, "file_path", "file is listed in secret_files")
 	}
 	return allow
 }

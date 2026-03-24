@@ -13,9 +13,9 @@ const (
 	ConfigFileName       = "blindenv.yml"
 	GlobalConfigFileName = ".blindenv.yml"
 
-	ModeBlock    = "block"
-	ModeStealth  = "stealth"
-	ModeEvacuate = "evacuate"
+	ModeBlock = "block"
+	ModeBlind = "blind"
+	ModeStash = "stash"
 )
 
 // Config represents a blindenv.yml configuration file.
@@ -27,13 +27,13 @@ type Config struct {
 	SecretFiles []string `yaml:"secret_files,omitempty"`
 }
 
-// EffectiveMode returns the configured mode, defaulting to "block".
+// EffectiveMode returns the configured mode, defaulting to "blind".
 func (c *Config) EffectiveMode() string {
 	switch c.Mode {
-	case ModeBlock, ModeStealth, ModeEvacuate:
+	case ModeBlock, ModeBlind, ModeStash:
 		return c.Mode
 	default:
-		return ModeBlock
+		return ModeBlind
 	}
 }
 
@@ -111,7 +111,7 @@ func CreateDefault() (string, error) {
 
 id: ` + generateID() + `
 
-# mode: stealth          # block (default) | stealth | evacuate
+# mode: block             # blind (default) | block | stash
 
 secret_files:        # .env files — auto-parsed, paths blocked from agent
   - .env
