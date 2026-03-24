@@ -98,7 +98,7 @@ func respond(p provider.Provider, result provider.HookResult) {
 
 func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 	command := p.ParseBashCommand(stdin)
-	if command == "" || command == "blindenv" || strings.HasPrefix(command, "blindenv ") {
+	if command == "" || strings.Contains(command, "blindenv run ") || strings.HasSuffix(command, "blindenv") {
 		return allow
 	}
 
@@ -107,10 +107,15 @@ func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
+	binPath := "blindenv"
+	if root := os.Getenv("CLAUDE_PLUGIN_ROOT"); root != "" {
+		binPath = filepath.Join(root, "bin", "blindenv")
+	}
+
 	escaped := strings.ReplaceAll(command, "'", "'\\''")
 	return provider.HookResult{
 		Action:  provider.Rewrite,
-		Command: fmt.Sprintf("blindenv run '%s'", escaped),
+		Command: fmt.Sprintf("%s run '%s'", binPath, escaped),
 	}
 }
 
