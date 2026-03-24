@@ -28,6 +28,8 @@ func Execute() error {
 		return initCmd()
 	case "hook":
 		return hookCmd()
+	case "evacuate":
+		return evacuateCmd()
 	case "cache-restore":
 		return cacheRestoreCmd()
 	case "cache-refresh":
@@ -119,6 +121,25 @@ func initCmd() error {
 	return nil
 }
 
+func evacuateCmd() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("config error: %w", err)
+	}
+	if cfg == nil || len(cfg.SecretFiles) == 0 || cfg.EffectiveMode() != config.ModeEvacuate {
+		return nil
+	}
+
+	evacuated, skipped := engine.Evacuate(cfg)
+	for _, e := range evacuated {
+		fmt.Printf("evacuated: %s\n", e)
+	}
+	for _, s := range skipped {
+		fmt.Printf("skipped (no cache): %s\n", s)
+	}
+	return nil
+}
+
 func cacheRestoreCmd() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -173,7 +194,8 @@ Usage:
   blindenv run '<command>'       Execute command with secret isolation + output redaction
   blindenv check-file <path>     Check if a file contains or exposes secrets
   blindenv has-config            Exit 0 if env mediation config exists, 1 otherwise
-  blindenv cache-restore         Restore secret files from cache (after agent damage)
+  blindenv evacuate              Delete secret files from disk (evacuate mode only)
+  blindenv cache-restore         Restore secret files from cache
   blindenv cache-refresh         Re-cache secret files (after you edit .env)
   blindenv version               Show version
   blindenv help                  Show this help
@@ -181,6 +203,7 @@ Usage:
 Config:
   Place blindenv.yml in your project root or ~/.blindenv.yml
 
+  mode: stealth        # block (default) | stealth | evacuate
   inject:              # env vars from process env - injected + redacted
     - API_KEY
   passthrough:         # non-secret vars - explicit allowlist
@@ -188,6 +211,11 @@ Config:
     - HOME
   secret_files:        # .env files - auto-parsed, paths blocked
     - .env
+
+Security modes:
+  block      Explicit deny + output redaction (default)
+  stealth    Files appear nonexistent — agent doesn't know they're there
+  evacuate   Files physically removed from disk — even ls reveals nothing
 
 Example:
   blindenv run 'curl -H "Authorization: $API_KEY" https://api.example.com'

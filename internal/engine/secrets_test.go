@@ -413,6 +413,112 @@ func TestRedactSecrets_MultilineOutput(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Evacuate
+// ---------------------------------------------------------------------------
+
+func TestEvacuate_DeletesOriginalWhenCacheExists(t *testing.T) {
+	path := writeTempEnvFile(t, "SECRET=value\n")
+
+	cfg := &config.Config{
+		ID:          "evac-test",
+		SecretFiles: []string{path},
+	}
+	EnsureSecretCache(cfg)
+
+	evacuated, skipped := Evacuate(cfg)
+
+	if len(evacuated) != 1 {
+		t.Fatalf("expected 1 evacuated, got %d", len(evacuated))
+	}
+	if len(skipped) != 0 {
+		t.Fatalf("expected 0 skipped, got %d", len(skipped))
+	}
+
+	// Original must be gone.
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Error("original file should be deleted after evacuate")
+	}
+
+	// Cache must still exist.
+	cached := cachedPath(cfg.ID, path)
+	if _, err := os.Stat(cached); err != nil {
+		t.Error("cached copy should still exist after evacuate")
+	}
+}
+
+func TestEvacuate_IdempotentWhenAlreadyGone(t *testing.T) {
+	path := writeTempEnvFile(t, "SECRET=value\n")
+
+	cfg := &config.Config{
+		ID:          "evac-idem",
+		SecretFiles: []string{path},
+	}
+	EnsureSecretCache(cfg)
+	os.Remove(path) // already gone
+
+	evacuated, skipped := Evacuate(cfg)
+
+	if len(evacuated) != 0 {
+		t.Error("should not report already-absent file as evacuated")
+	}
+	if len(skipped) != 0 {
+		t.Error("should not report already-absent file as skipped")
+	}
+}
+
+func TestEvacuate_SkipsWhenNoCacheExists(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".env")
+	os.WriteFile(path, []byte("KEY=val\n"), 0o600)
+
+	cfg := &config.Config{
+		ID:          "evac-nocache-" + t.Name(),
+		SecretFiles: []string{path},
+	}
+
+	// Sabotage: make cache dir unwritable so EnsureSecretCache fails.
+	home, _ := os.UserHomeDir()
+	cacheDir := filepath.Join(home, ".cache", "blindenv", cfg.ID)
+	os.MkdirAll(cacheDir, 0o700)
+	os.Chmod(cacheDir, 0o000)
+	t.Cleanup(func() {
+		os.Chmod(cacheDir, 0o700)
+		os.RemoveAll(cacheDir)
+	})
+
+	evacuated, skipped := Evacuate(cfg)
+
+	if len(evacuated) != 0 {
+		t.Error("must not evacuate when cache write fails")
+	}
+	if len(skipped) != 1 {
+		t.Fatalf("expected 1 skipped, got %d", len(skipped))
+	}
+
+	// Original must survive.
+	if _, err := os.Stat(path); err != nil {
+		t.Error("original must NOT be deleted when cache is unavailable")
+	}
+}
+
+func TestEvacuate_SecretsStillResolvableAfterEvacuate(t *testing.T) {
+	path := writeTempEnvFile(t, "EVAC_KEY=evac_value\n")
+
+	cfg := &config.Config{
+		ID:          "evac-resolve",
+		SecretFiles: []string{path},
+	}
+
+	Evacuate(cfg)
+
+	// Original is gone, but secrets should still resolve from cache.
+	secrets := ResolveSecrets(cfg)
+	if secrets["EVAC_KEY"] != "evac_value" {
+		t.Errorf("expected evac_value, got %q", secrets["EVAC_KEY"])
+	}
+}
+
+// ---------------------------------------------------------------------------
 // helpers (package-local, not exported)
 // ---------------------------------------------------------------------------
 

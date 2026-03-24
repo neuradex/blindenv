@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "blindenv — secret isolation for AI coding agents. Inject, redact, block.",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "plugins": [
     {

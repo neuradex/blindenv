@@ -12,14 +12,29 @@ import (
 const (
 	ConfigFileName       = "blindenv.yml"
 	GlobalConfigFileName = ".blindenv.yml"
+
+	ModeBlock    = "block"
+	ModeStealth  = "stealth"
+	ModeEvacuate = "evacuate"
 )
 
 // Config represents a blindenv.yml configuration file.
 type Config struct {
 	ID          string   `yaml:"id,omitempty"`
+	Mode        string   `yaml:"mode,omitempty"`
 	Inject      []string `yaml:"inject,omitempty"`
 	Passthrough []string `yaml:"passthrough,omitempty"`
 	SecretFiles []string `yaml:"secret_files,omitempty"`
+}
+
+// EffectiveMode returns the configured mode, defaulting to "block".
+func (c *Config) EffectiveMode() string {
+	switch c.Mode {
+	case ModeBlock, ModeStealth, ModeEvacuate:
+		return c.Mode
+	default:
+		return ModeBlock
+	}
 }
 
 // HasSecrets reports whether the config defines any secret sources.
@@ -95,6 +110,8 @@ func CreateDefault() (string, error) {
 # Docs: https://github.com/neuradex/blindenv
 
 id: ` + generateID() + `
+
+# mode: stealth          # block (default) | stealth | evacuate
 
 secret_files:        # .env files — auto-parsed, paths blocked from agent
   - .env

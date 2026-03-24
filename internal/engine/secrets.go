@@ -65,6 +65,36 @@ func EnsureSecretCache(cfg *config.Config) {
 	}
 }
 
+// Evacuate ensures secret files are cached, then deletes the originals.
+// This makes secret files genuinely invisible to ls, find, etc.
+// Safety: never deletes an original unless the cached copy exists.
+func Evacuate(cfg *config.Config) (evacuated, skipped []string) {
+	EnsureSecretCache(cfg)
+
+	for _, sf := range cfg.SecretFiles {
+		src := expandPath(sf)
+		dst := cachedPath(cfg.ID, sf)
+
+		// Safety: cache copy must exist before we delete the original.
+		if _, err := os.Stat(dst); err != nil {
+			skipped = append(skipped, src)
+			continue
+		}
+
+		// Already evacuated — skip silently.
+		if _, err := os.Stat(src); os.IsNotExist(err) {
+			continue
+		}
+
+		if err := os.Remove(src); err != nil {
+			skipped = append(skipped, src)
+			continue
+		}
+		evacuated = append(evacuated, src)
+	}
+	return
+}
+
 // CacheRestore copies cached secret files back to their original locations.
 func CacheRestore(cfg *config.Config) (restored, skipped []string) {
 	for _, sf := range cfg.SecretFiles {

@@ -19,6 +19,7 @@
   <a href="#install">Install</a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#how-it-works">How It Works</a> ·
+  <a href="#security-modes">Security Modes</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#cli-reference">CLI Reference</a> ·
   <a href="#beyond-secret-managers">Comparison</a>
@@ -173,10 +174,45 @@ The agent never sees a "blocked" message for secret files — they simply don't 
 
 ---
 
+## Security Modes
+
+> *"Not knowing something exists is the ultimate security."*
+
+blindenv offers three security modes, each with increasing levels of invisibility:
+
+```yaml
+# blindenv.yml
+mode: stealth    # block (default) | stealth | evacuate
+```
+
+| Mode | Secret file access | `ls` reveals files? | Best for |
+|------|-------------------|--------------------|---------|
+| **`block`** | Explicit deny + output redacted | Yes | Most projects — clear feedback when blocked |
+| **`stealth`** | Files appear nonexistent | Yes (files still on disk) | When agent shouldn't know secrets exist |
+| **`evacuate`** | Files appear nonexistent | **No** (physically removed) | Maximum security — even `ls` reveals nothing |
+
+### `block` — Deny and Redact (default)
+
+The agent sees explicit "access denied" messages when it tries to access secret files. Output is still redacted. The agent knows the files exist but cannot access them. This is the safest default for most projects — clear feedback without mystery.
+
+### `stealth` — Files Don't Exist
+
+Secret files appear to not exist at all. Read returns "file not found", searches silently exclude them. The agent has no way to know the files are there — unless it runs `ls` in Bash.
+
+### `evacuate` — Complete Invisibility
+
+The strongest mode. At session start, secret files are moved to a secure cache (`~/.cache/blindenv/`) and physically deleted from disk. Even `ls`, `find`, and `tree` in Bash reveal nothing. The files genuinely don't exist during the session.
+
+Secrets remain fully functional — they're served from cache for injection and redaction. Use `blindenv cache-restore` to bring them back after the session.
+
+---
+
 ## Configuration
 
 ```yaml
 # blindenv.yml
+
+mode: stealth           # block (default) | stealth | evacuate
 
 secret_files:        # .env files — auto-parsed, paths blocked from agent
   - .env
@@ -195,6 +231,7 @@ passthrough:         # non-secret vars — explicit allowlist (strict mode)
 
 | Field | Purpose | When to use |
 |-------|---------|-------------|
+| `mode` | Security mode: `block`, `stealth`, or `evacuate` | When you want stealth/evacuate instead of the default block |
 | `secret_files` | Parse `.env` files, inject values, block file access | **Always** — this is the primary mechanism |
 | `inject` | Pull env vars from the host process | CI/CD secrets, vars not in any file |
 | `passthrough` | Strict allowlist for non-secret vars | High-security environments |
@@ -213,7 +250,8 @@ Config is discovered by walking up from `cwd` to `/`, then checking `~/.blindenv
 blindenv run '<command>'              Execute with secret isolation + output redaction
 blindenv check-file <path>            Check if file is blocked (exit 2 = blocked)
 blindenv has-config                   Exit 0 if config with secrets exists, 1 otherwise
-blindenv cache-restore                Restore secret files from cache (after agent damage)
+blindenv evacuate                     Delete secret files from disk (evacuate mode only)
+blindenv cache-restore                Restore secret files from cache
 blindenv cache-refresh                Re-cache secret files (after you edit .env)
 blindenv hook cc <hook>               Claude Code PreToolUse hooks
                                        bash | read | grep | glob | guard-file
