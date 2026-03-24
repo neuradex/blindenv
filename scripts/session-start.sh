@@ -1,7 +1,7 @@
 #!/bin/bash
 # blindenv SessionStart hook.
 # 1. Ensure binary is installed
-# 2. Symlink to ~/.local/bin for CLI access
+# 2. Add plugin bin to shell PATH (zshrc/bashrc)
 # 3. Auto-create blindenv.yml if not found
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -39,13 +39,20 @@ if [ ! -x "$BIN" ]; then
   chmod +x "$BIN"
 fi
 
-# ── 2. Symlink to ~/.local/bin if not already there ──────────────
-LOCAL_BIN="$HOME/.local/bin"
-LINK="$LOCAL_BIN/blindenv"
-if [ ! -L "$LINK" ] || [ "$(readlink "$LINK")" != "$BIN" ]; then
-  mkdir -p "$LOCAL_BIN"
-  ln -sf "$BIN" "$LINK"
-fi
+# ── 2. Ensure plugin bin dir is in shell PATH ────────────────────
+MARKER="# [blindenv] plugin bin"
+EXPORT_LINE="export PATH=\"$BIN_DIR:\$PATH\" $MARKER"
+
+for RC in "$HOME/.zshrc" "$HOME/.bashrc"; do
+  [ ! -f "$RC" ] && continue
+  if grep -q "$MARKER" "$RC" 2>/dev/null; then
+    # Update path if plugin location changed
+    sed -i '' "/$MARKER/c\\
+$EXPORT_LINE" "$RC" 2>/dev/null
+  else
+    echo "$EXPORT_LINE" >> "$RC"
+  fi
+done
 
 # ── 3. Auto-create blindenv.yml if not found ─────────────────────
 "$BIN" init
