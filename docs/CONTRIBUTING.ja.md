@@ -40,16 +40,17 @@ blindenv/
 ├── cmd/
 │   ├── root.go              # CLIディスパッチャ (run, init, check-file, ...)
 │   └── hook.go              # フックハンドラ (bash, read, grep, glob, guard-file)
-├── config/
-│   └── config.go            # YAML設定の読み込みと探索
-├── engine/
-│   ├── exec.go              # シークレット分離を適用したサブプロセス実行
-│   ├── secrets.go           # シークレット解決、キャッシュ、マスキング
-│   └── file_guard.go        # ファイルアクセスチェック（パスマッチ、コンテンツスキャン）
-├── provider/
-│   ├── provider.go          # プラットフォーム非依存のフックインターフェース
-│   └── cc/
-│       └── cc.go            # Claude Codeプロバイダー実装
+├── internal/
+│   ├── config/
+│   │   └── config.go        # YAML設定の読み込みと探索
+│   ├── engine/
+│   │   ├── exec.go          # シークレット分離を適用したサブプロセス実行
+│   │   ├── secrets.go       # シークレット解決、キャッシュ、マスキング
+│   │   └── file_guard.go    # ファイルアクセスチェック（パスマッチ、コンテンツスキャン）
+│   └── provider/
+│       ├── provider.go      # プラットフォーム非依存のフックインターフェース
+│       └── cc/
+│           └── cc.go        # Claude Codeプロバイダー実装
 ├── .claude-plugin/
 │   ├── plugin.json          # プラグインメタデータ
 │   └── hooks.json           # Claude Codeフック設定

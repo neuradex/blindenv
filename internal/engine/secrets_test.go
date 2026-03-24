@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/neuradex/blindenv/config"
+	"github.com/neuradex/blindenv/internal/config"
 )
 
 // ---------------------------------------------------------------------------

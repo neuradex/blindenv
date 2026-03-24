@@ -40,16 +40,17 @@ blindenv/
 ├── cmd/
 │   ├── root.go              # CLI 디스패처 (run, init, check-file, ...)
 │   └── hook.go              # 훅 핸들러 (bash, read, grep, glob, guard-file)
-├── config/
-│   └── config.go            # YAML 설정 로딩 및 탐색
-├── engine/
-│   ├── exec.go              # 시크릿 격리를 적용한 서브프로세스 실행
-│   ├── secrets.go           # 시크릿 해석, 캐싱, 마스킹
-│   └── file_guard.go        # 파일 접근 검사 (경로 매칭, 내용 스캔)
-├── provider/
-│   ├── provider.go          # 플랫폼 독립적 훅 인터페이스
-│   └── cc/
-│       └── cc.go            # Claude Code 프로바이더 구현
+├── internal/
+│   ├── config/
+│   │   └── config.go        # YAML 설정 로딩 및 탐색
+│   ├── engine/
+│   │   ├── exec.go          # 시크릿 격리를 적용한 서브프로세스 실행
+│   │   ├── secrets.go       # 시크릿 해석, 캐싱, 마스킹
+│   │   └── file_guard.go    # 파일 접근 검사 (경로 매칭, 내용 스캔)
+│   └── provider/
+│       ├── provider.go      # 플랫폼 독립적 훅 인터페이스
+│       └── cc/
+│           └── cc.go        # Claude Code 프로바이더 구현
 ├── .claude-plugin/
 │   ├── plugin.json          # 플러그인 메타데이터
 │   └── hooks.json           # Claude Code 훅 설정

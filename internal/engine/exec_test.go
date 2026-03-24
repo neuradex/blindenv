@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/neuradex/blindenv/config"
+	"github.com/neuradex/blindenv/internal/config"
 )
 
 // skipIfNoBash skips the test when bash is unavailable (e.g. restricted CI).

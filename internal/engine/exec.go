@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/neuradex/blindenv/config"
+	"github.com/neuradex/blindenv/internal/config"
 )
 
 // Run executes a shell command with secret isolation and output redaction.
