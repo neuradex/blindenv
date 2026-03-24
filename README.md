@@ -94,8 +94,14 @@ Once configured, the agent cannot even know these files exist — all access is 
 ### Build from source
 
 ```bash
-go install github.com/neuradex/blindenv@latest
+git clone https://github.com/neuradex/blindenv.git
+cd blindenv
+make build      # → ./blindenv
 ```
+
+Or install globally: `go install github.com/neuradex/blindenv@latest`
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and project structure.
 
 ### Platform support
 

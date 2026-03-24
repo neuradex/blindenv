@@ -52,7 +52,8 @@ func hookCmd() error {
 		os.Exit(1)
 	}
 
-	return respond(p, result)
+	respond(p, result)
+	return nil // unreachable — respond always calls os.Exit
 }
 
 var allow = provider.HookResult{Action: provider.Allow}
@@ -66,7 +67,7 @@ func resolveProvider(name string) provider.Provider {
 	}
 }
 
-func respond(p provider.Provider, result provider.HookResult) error {
+func respond(p provider.Provider, result provider.HookResult) {
 	switch result.Action {
 	case provider.Allow:
 		if data := p.FormatAllow(); data != nil {
@@ -87,8 +88,10 @@ func respond(p provider.Provider, result provider.HookResult) error {
 			fmt.Println(string(data))
 		}
 		os.Exit(0)
+	default:
+		fmt.Fprintf(os.Stderr, "blindenv: unknown action %d\n", result.Action)
+		os.Exit(1)
 	}
-	return nil
 }
 
 // --- Hook logic (platform-independent) ---
@@ -123,14 +126,21 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 	}
 
 	cfg, err := config.Load()
-	if err != nil || cfg == nil {
+	if err != nil || cfg == nil || !cfg.HasSecrets() {
 		return allow
 	}
 
+	absPath, _ := filepath.Abs(filePath)
+
+	// Fast path: check path match and cache dir without resolving secrets.
+	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
+		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
+		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
+	}
+
+	// Slow path: content scan — only resolve secrets when path checks pass.
 	secrets := engine.ResolveSecrets(cfg)
-	if blocked, _ := engine.CheckFile(filePath, cfg, secrets); blocked {
-		// Redirect to a non-existent path so the Read tool returns
-		// "file does not exist" naturally — no blindenv fingerprint.
+	if blocked, _ := engine.CheckFileForSecrets(absPath, secrets); blocked {
 		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
 		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 	}
@@ -200,10 +210,10 @@ func hookGlob(p provider.Provider, stdin []byte) provider.HookResult {
 	}
 
 	currentPattern, _ := toolInput["pattern"].(string)
-	if currentPattern != "" {
-		toolInput["pattern"] = currentPattern + "," + excludes
+	if currentPattern == "" {
+		return allow
 	}
-
+	toolInput["pattern"] = currentPattern + "," + excludes
 	return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 }
 
@@ -232,7 +242,7 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 
 	// Config protection — agent already knows blindenv exists, so block explicitly.
 	base := filepath.Base(filePath)
-	if base == "blindenv.yml" || base == ".blindenv.yml" {
+	if base == config.ConfigFileName || base == config.GlobalConfigFileName {
 		return provider.HookResult{
 			Action: provider.Block,
 			Reason: "cannot modify blindenv config. Ask the user to edit it directly.",
@@ -240,12 +250,14 @@ func hookGuardFile(p provider.Provider, stdin []byte) provider.HookResult {
 	}
 
 	cfg, err := config.Load()
-	if err != nil || cfg == nil {
+	if err != nil || cfg == nil || !cfg.HasSecrets() {
 		return allow
 	}
 
-	// Secret files — pretend the file doesn't exist.
-	if engine.MatchSecretFilePath(filePath, cfg.SecretFiles) {
+	absPath, _ := filepath.Abs(filePath)
+
+	// Secret files or cache dir — pretend the file doesn't exist.
+	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) || engine.IsInsideCacheDir(absPath) {
 		toolInput["file_path"] = "/dev/null/.blindenv-nonexistent"
 		return provider.HookResult{Action: provider.Modify, UpdatedInput: toolInput}
 	}

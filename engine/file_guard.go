@@ -56,15 +56,15 @@ func CheckFile(filePath string, cfg *config.Config, secrets map[string]string) (
 	}
 
 	// Protect the cache directory — it contains copies of secret files.
-	if isInsideCacheDir(absPath) {
+	if IsInsideCacheDir(absPath) {
 		return true, "file is in secret cache"
 	}
 
 	return CheckFileForSecrets(absPath, secrets)
 }
 
-// isInsideCacheDir checks if a path is inside ~/.cache/blindenv/.
-func isInsideCacheDir(absPath string) bool {
+// IsInsideCacheDir checks if a path is inside ~/.cache/blindenv/.
+func IsInsideCacheDir(absPath string) bool {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return false

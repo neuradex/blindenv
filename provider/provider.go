@@ -25,9 +25,6 @@ type Provider interface {
 	// ParseBashCommand extracts the shell command from hook stdin.
 	ParseBashCommand(stdin []byte) string
 
-	// ParseFilePath extracts the file path from hook stdin.
-	ParseFilePath(stdin []byte) string
-
 	// FormatAllow returns stdout bytes for an allow response.
 	FormatAllow() []byte
 

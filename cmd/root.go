@@ -8,7 +8,7 @@ import (
 	"github.com/neuradex/blindenv/engine"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func Execute() error {
 	if len(os.Args) < 2 {

@@ -77,6 +77,7 @@ func CacheRestore(cfg *config.Config) (restored, skipped []string) {
 			continue
 		}
 
+		os.MkdirAll(filepath.Dir(dst), 0o700)
 		if err := os.WriteFile(dst, content, 0o600); err != nil {
 			skipped = append(skipped, dst)
 			continue

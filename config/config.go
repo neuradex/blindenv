@@ -9,6 +9,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	ConfigFileName       = "blindenv.yml"
+	GlobalConfigFileName = ".blindenv.yml"
+)
+
 // Config represents a blindenv.yml configuration file.
 type Config struct {
 	ID          string   `yaml:"id,omitempty"`
@@ -31,7 +36,7 @@ func FindConfigFile(from string) string {
 	root := filepath.VolumeName(dir) + string(filepath.Separator)
 
 	for {
-		candidate := filepath.Join(dir, "blindenv.yml")
+		candidate := filepath.Join(dir, ConfigFileName)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
 		}
@@ -43,7 +48,7 @@ func FindConfigFile(from string) string {
 
 	// Also check ~/.blindenv.yml
 	if home, err := os.UserHomeDir(); err == nil {
-		candidate := filepath.Join(home, ".blindenv.yml")
+		candidate := filepath.Join(home, GlobalConfigFileName)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
 		}
@@ -84,7 +89,7 @@ func Load() (*Config, error) {
 // CreateDefault creates a blindenv.yml with a unique ID in the current directory.
 func CreateDefault() (string, error) {
 	cwd, _ := os.Getwd()
-	path := filepath.Join(cwd, "blindenv.yml")
+	path := filepath.Join(cwd, ConfigFileName)
 
 	content := `# blindenv.yml — auto-generated, edit anytime
 # Docs: https://github.com/neuradex/blindenv

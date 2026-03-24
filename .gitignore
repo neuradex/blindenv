@@ -3,3 +3,4 @@ bin/
 .env*
 !.env.example
 dist/
+blindenv.yml

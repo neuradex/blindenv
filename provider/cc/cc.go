@@ -20,10 +20,6 @@ func (p *Provider) ParseBashCommand(stdin []byte) string {
 	return parseField(stdin, "command")
 }
 
-func (p *Provider) ParseFilePath(stdin []byte) string {
-	return parseField(stdin, "file_path")
-}
-
 func (p *Provider) FormatAllow() []byte {
 	return nil // exit 0, no stdout
 }
@@ -33,17 +29,7 @@ func (p *Provider) FormatBlock(reason string) (string, int) {
 }
 
 func (p *Provider) FormatRewrite(newCommand string) []byte {
-	out := map[string]interface{}{
-		"hookSpecificOutput": map[string]interface{}{
-			"hookEventName":      "PreToolUse",
-			"permissionDecision": "allow",
-			"updatedInput": map[string]interface{}{
-				"command": newCommand,
-			},
-		},
-	}
-	data, _ := json.Marshal(out)
-	return data
+	return p.FormatModifiedInput(map[string]interface{}{"command": newCommand})
 }
 
 func (p *Provider) ParseToolInput(stdin []byte) map[string]interface{} {

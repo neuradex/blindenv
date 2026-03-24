@@ -94,8 +94,14 @@ secret_files:
 ### 소스에서 빌드
 
 ```bash
-go install github.com/neuradex/blindenv@latest
+git clone https://github.com/neuradex/blindenv.git
+cd blindenv
+make build      # → ./blindenv
 ```
+
+또는 글로벌 설치: `go install github.com/neuradex/blindenv@latest`
+
+개발 환경 구성과 프로젝트 구조는 [CONTRIBUTING.md](../CONTRIBUTING.md)를 참고하세요.
 
 ### 플랫폼 지원
 
