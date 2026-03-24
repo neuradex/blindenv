@@ -55,6 +55,32 @@ git push origin main --tags             # GoReleaserをトリガー → GitHub R
 
 `make bump`を実行すると、コピー＆ペーストで使えるgitコマンドが出力されます。
 
+## プロジェクト構造
+
+```
+blindenv/
+├── main.go                  # エントリーポイント
+├── cmd/
+│   ├── root.go              # CLIディスパッチャ (run, init, check-file, ...)
+│   └── hook.go              # フックハンドラ (bash, read, grep, glob, guard-file)
+├── internal/
+│   ├── config/
+│   │   └── config.go        # YAML設定の読み込みと探索
+│   ├── engine/
+│   │   ├── exec.go          # シークレット分離を適用したサブプロセス実行
+│   │   ├── secrets.go       # シークレット解決、キャッシュ、マスキング
+│   │   └── file_guard.go    # ファイルアクセスチェック（パスマッチ、コンテンツスキャン）
+│   └── provider/
+│       ├── provider.go      # プラットフォーム非依存のフックインターフェース
+│       └── cc/
+│           └── cc.go        # Claude Codeプロバイダー実装
+├── .claude-plugin/
+│   ├── plugin.json          # プラグインメタデータ
+│   └── hooks.json           # Claude Codeフック設定
+└── scripts/
+    └── session-start.sh     # セッション開始時の自動インストール + 初期化
+```
+
 ## アーキテクチャ
 
 blindenvには2つの実行モードがあります：

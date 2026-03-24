@@ -55,6 +55,32 @@ git push origin main --tags             # Triggers GoReleaser → GitHub Release
 
 `make bump` prints the git commands to copy-paste.
 
+## Project Structure
+
+```
+blindenv/
+├── main.go                  # Entrypoint
+├── cmd/
+│   ├── root.go              # CLI dispatcher (run, init, check-file, ...)
+│   └── hook.go              # Hook handlers (bash, read, grep, glob, guard-file)
+├── internal/
+│   ├── config/
+│   │   └── config.go        # YAML config loading and discovery
+│   ├── engine/
+│   │   ├── exec.go          # Subprocess execution with secret isolation
+│   │   ├── secrets.go       # Secret resolution, caching, redaction
+│   │   └── file_guard.go    # File access checks (path match, content scan)
+│   └── provider/
+│       ├── provider.go      # Platform-agnostic hook interface
+│       └── cc/
+│           └── cc.go        # Claude Code provider implementation
+├── .claude-plugin/
+│   ├── plugin.json          # Plugin metadata
+│   └── hooks.json           # Claude Code hook configuration
+└── scripts/
+    └── session-start.sh     # Auto-install + init on session start
+```
+
 ## Architecture
 
 blindenv has two execution modes:
