@@ -25,6 +25,10 @@ func Execute() error {
 		return hasConfigCmd()
 	case "hook":
 		return hookCmd()
+	case "cache-restore":
+		return cacheRestoreCmd()
+	case "cache-refresh":
+		return cacheRefreshCmd()
 	case "version", "--version", "-v":
 		fmt.Println("blindenv " + version)
 		return nil
@@ -98,6 +102,52 @@ func hasConfigCmd() error {
 	return nil
 }
 
+func cacheRestoreCmd() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("config error: %w", err)
+	}
+	if cfg == nil || len(cfg.SecretFiles) == 0 {
+		fmt.Fprintln(os.Stderr, "no secret_files configured")
+		os.Exit(1)
+	}
+
+	restored, skipped := engine.CacheRestore(cfg.SecretFiles)
+	for _, r := range restored {
+		fmt.Printf("restored: %s\n", r)
+	}
+	for _, s := range skipped {
+		fmt.Printf("skipped (no cache): %s\n", s)
+	}
+	if len(restored) == 0 {
+		fmt.Println("nothing to restore")
+	}
+	return nil
+}
+
+func cacheRefreshCmd() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("config error: %w", err)
+	}
+	if cfg == nil || len(cfg.SecretFiles) == 0 {
+		fmt.Fprintln(os.Stderr, "no secret_files configured")
+		os.Exit(1)
+	}
+
+	refreshed, skipped := engine.CacheRefresh(cfg.SecretFiles)
+	for _, r := range refreshed {
+		fmt.Printf("refreshed: %s\n", r)
+	}
+	for _, s := range skipped {
+		fmt.Printf("skipped (file missing): %s\n", s)
+	}
+	if len(refreshed) == 0 {
+		fmt.Println("nothing to refresh")
+	}
+	return nil
+}
+
 func printUsage() {
 	fmt.Print(`blindenv - Secret isolation for AI coding agents
 
@@ -105,6 +155,8 @@ Usage:
   blindenv run '<command>'       Execute command with secret isolation + output redaction
   blindenv check-file <path>     Check if a file contains or exposes secrets
   blindenv has-config            Exit 0 if env mediation config exists, 1 otherwise
+  blindenv cache-restore         Restore secret files from cache (after agent damage)
+  blindenv cache-refresh         Re-cache secret files (after you edit .env)
   blindenv version               Show version
   blindenv help                  Show this help
 

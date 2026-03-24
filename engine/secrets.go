@@ -68,6 +68,52 @@ func EnsureSecretCache(secretFiles []string) {
 	}
 }
 
+// CacheRestore copies cached secret files back to their original locations.
+func CacheRestore(secretFiles []string) (restored, skipped []string) {
+	for _, sf := range secretFiles {
+		src := cachedSecretFilePath(sf)
+		dst := expandPath(sf)
+
+		content, err := os.ReadFile(src)
+		if err != nil {
+			skipped = append(skipped, dst)
+			continue
+		}
+
+		if err := os.WriteFile(dst, content, 0o600); err != nil {
+			skipped = append(skipped, dst)
+			continue
+		}
+		restored = append(restored, dst)
+	}
+	return
+}
+
+// CacheRefresh re-reads original secret files into the cache.
+// Use after manually editing .env files.
+func CacheRefresh(secretFiles []string) (refreshed, skipped []string) {
+	for _, sf := range secretFiles {
+		src := expandPath(sf)
+		dst := cachedSecretFilePath(sf)
+
+		content, err := os.ReadFile(src)
+		if err != nil {
+			skipped = append(skipped, src)
+			continue
+		}
+
+		os.MkdirAll(filepath.Dir(dst), 0o700)
+		// Remove read-only before overwrite
+		os.Chmod(dst, 0o600)
+		if err := os.WriteFile(dst, content, 0o400); err != nil {
+			skipped = append(skipped, src)
+			continue
+		}
+		refreshed = append(refreshed, src)
+	}
+	return
+}
+
 // cachedSecretFilePath returns the cache path for a secret file.
 // Cache lives under ~/.cache/blindenv/<hash>/<basename>.
 func cachedSecretFilePath(originalPath string) string {

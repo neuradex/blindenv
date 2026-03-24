@@ -236,6 +236,8 @@ Config is discovered by walking up from `cwd` to `/`, then checking `~/.blindenv
 blindenv run '<command>'              Execute with secret isolation + output redaction
 blindenv check-file <path>            Check if file is blocked (exit 2 = blocked)
 blindenv has-config                   Exit 0 if config with secrets exists, 1 otherwise
+blindenv cache-restore                Restore secret files from cache (after agent damage)
+blindenv cache-refresh                Re-cache secret files (after you edit .env)
 blindenv hook cc <hook>               Claude Code PreToolUse hooks
                                        bash | read | grep | glob | guard-file
 ```
