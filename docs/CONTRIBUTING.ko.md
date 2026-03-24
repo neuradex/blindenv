@@ -26,11 +26,34 @@ make build
 ## 주요 명령어
 
 ```bash
-make build    # 로컬 바이너리 빌드
+make build    # 로컬 바이너리 빌드 (git 태그에서 버전 주입)
 make test     # 전체 테스트 실행
 make vet      # go vet 실행
 make clean    # 빌드된 바이너리 삭제
+make purge    # 시스템에서 blindenv 흔적 전체 삭제 (설치 테스트용)
 ```
+
+## 버전 관리 & 릴리스
+
+버전은 **두 곳**에 존재하며, 관리 방식이 다릅니다:
+
+| 위치 | 결정 주체 | 업데이트 시점 |
+|------|----------|-------------|
+| Go 바이너리 (`blindenv version`) | Git 태그 (빌드 시 `-ldflags`로 주입) | 빌드 시 자동 |
+| `plugin.json` / `marketplace.json` | `make bump` | 태그 전에 수동 |
+
+**Go 바이너리에 버전이 하드코딩되어 있지 않습니다.** 빌드 시 git 태그에서 자동 주입됩니다 — 로컬(`make build`)과 CI(GoReleaser) 모두. 태그 직후 `make build`하면 `v0.4.0` 같은 깔끔한 버전이 나오고, 태그 이후 커밋이 있으면 `v0.4.0-3-gabcdef`처럼 표시됩니다.
+
+### 릴리스 플로우
+
+```bash
+make bump v=0.4.0                      # plugin.json + marketplace.json 업데이트
+git add -A && git commit -m "chore: v0.4.0"
+git tag v0.4.0                          # 이 태그가 바이너리 버전을 결정
+git push origin main --tags             # GoReleaser 트리거 → GitHub Release
+```
+
+`make bump`을 실행하면 복사해서 쓸 수 있는 git 명령어가 출력됩니다.
 
 ## 프로젝트 구조
 

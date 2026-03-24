@@ -26,11 +26,34 @@ This produces a `./blindenv` binary in the project root.
 ## Common Commands
 
 ```bash
-make build    # Build local binary
+make build    # Build local binary (version from git tag)
 make test     # Run all tests
 make vet      # Run go vet
 make clean    # Remove built binary
+make purge    # Remove all blindenv traces from system (for testing installs)
 ```
+
+## Versioning & Releases
+
+Version lives in **two places**, managed differently:
+
+| Where | What controls it | When it updates |
+|-------|-----------------|-----------------|
+| Go binary (`blindenv version`) | Git tag via `-ldflags` | Automatically at build time |
+| `plugin.json` / `marketplace.json` | `make bump` | Manually before tagging |
+
+**Go binary version is never hardcoded.** It's injected from the git tag at build time — both locally (`make build`) and in CI (GoReleaser). After tagging, `make build` produces a clean version like `v0.4.0`. Between tags, it shows `v0.4.0-3-gabcdef` (3 commits after tag).
+
+### Release flow
+
+```bash
+make bump v=0.4.0                      # Update plugin.json + marketplace.json
+git add -A && git commit -m "chore: v0.4.0"
+git tag v0.4.0                          # This determines the binary version
+git push origin main --tags             # Triggers GoReleaser → GitHub Release
+```
+
+`make bump` prints the git commands to copy-paste.
 
 ## Project Structure
 

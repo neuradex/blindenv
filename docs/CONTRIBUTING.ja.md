@@ -26,11 +26,34 @@ make build
 ## 主なコマンド
 
 ```bash
-make build    # ローカルバイナリをビルド
+make build    # ローカルバイナリをビルド（gitタグからバージョン注入）
 make test     # 全テストを実行
 make vet      # go vetを実行
 make clean    # ビルド済みバイナリを削除
+make purge    # システムからblindenvの痕跡を全削除（インストールテスト用）
 ```
+
+## バージョン管理 & リリース
+
+バージョンは**2箇所**に存在し、管理方法が異なります：
+
+| 場所 | 決定する主体 | 更新タイミング |
+|------|------------|--------------|
+| Goバイナリ (`blindenv version`) | Gitタグ（ビルド時に`-ldflags`で注入） | ビルド時に自動 |
+| `plugin.json` / `marketplace.json` | `make bump` | タグ付け前に手動 |
+
+**Goバイナリにバージョンはハードコードされていません。** ビルド時にgitタグから自動注入されます — ローカル（`make build`）でもCI（GoReleaser）でも同様です。タグ直後に`make build`すると`v0.4.0`のようなクリーンなバージョンが表示され、タグ後にコミットがあると`v0.4.0-3-gabcdef`のように表示されます。
+
+### リリースフロー
+
+```bash
+make bump v=0.4.0                      # plugin.json + marketplace.json を更新
+git add -A && git commit -m "chore: v0.4.0"
+git tag v0.4.0                          # このタグがバイナリバージョンを決定
+git push origin main --tags             # GoReleaserをトリガー → GitHub Release
+```
+
+`make bump`を実行すると、コピー＆ペーストで使えるgitコマンドが出力されます。
 
 ## プロジェクト構造
 
