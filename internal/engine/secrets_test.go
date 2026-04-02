@@ -278,11 +278,11 @@ func TestResolveSecrets_FirstSecretFileTakesPriority(t *testing.T) {
 	}
 }
 
-func TestResolveSecrets_MaskEnvFromProcessEnv(t *testing.T) {
+func TestResolveSecrets_MaskKeysFromProcessEnv(t *testing.T) {
 	setEnv(t, "BLINDENV_CUSTOM_VAR", "custom_secret")
 
 	cfg := &config.Config{
-		MaskEnv: []string{"BLINDENV_CUSTOM_VAR"},
+		MaskKeys: []string{"BLINDENV_CUSTOM_VAR"},
 	}
 	got := ResolveSecrets(cfg)
 
@@ -305,12 +305,12 @@ func TestResolveSecrets_MaskPatternsAutoDetect(t *testing.T) {
 	}
 }
 
-func TestResolveSecrets_InjectTakesPriorityOverMaskEnv(t *testing.T) {
+func TestResolveSecrets_InjectTakesPriorityOverMaskKeys(t *testing.T) {
 	setEnv(t, "BLINDENV_PRIO_MASK", "env_value")
 
 	cfg := &config.Config{
 		Inject:  []string{"BLINDENV_PRIO_MASK"},
-		MaskEnv: []string{"BLINDENV_PRIO_MASK"},
+		MaskKeys: []string{"BLINDENV_PRIO_MASK"},
 	}
 	got := ResolveSecrets(cfg)
 

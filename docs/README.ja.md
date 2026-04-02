@@ -66,8 +66,8 @@ secret_files:
   - .env.local
   - secrets.yaml
 
-mask_env:
-  - MY_CUSTOM_VAR      # 特定の環境変数を名前でマスク
+mask_keys:
+  - MY_CUSTOM_VAR      # 特定の環境変数を名前でマスク（プロセス env から）
 
 mask_patterns:
   - KEY                # 名前に "KEY" を含むすべての環境変数をマスク

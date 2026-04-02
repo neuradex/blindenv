@@ -206,7 +206,7 @@ Config:
   mask_patterns:       # env var name patterns for auto-detection
     - KEY
     - SECRET
-  mask_env:            # explicit env vars to mask
+  mask_keys:           # mask specific env vars by name (from process env)
     - MY_CUSTOM_VAR
 
 Example:

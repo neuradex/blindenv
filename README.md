@@ -66,7 +66,7 @@ secret_files:
   - .env.local
   - secrets.yaml
 
-mask_env:
+mask_keys:
   - MY_CUSTOM_VAR      # mask a specific env var by name
 
 mask_patterns:

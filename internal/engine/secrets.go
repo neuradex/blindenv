@@ -29,7 +29,7 @@ func isSecretName(name string, patterns []string) bool {
 // ResolveSecrets collects all secret key-value pairs from:
 //  1. inject (process env, explicit names)
 //  2. secret_files (.env parsing, read from cache)
-//  3. mask_env (explicit env var names)
+//  3. mask_keys (explicit env var names)
 //  4. mask_patterns (auto-detect by env var name patterns)
 func ResolveSecrets(cfg *config.Config) map[string]string {
 	// Ensure cache exists before reading.
@@ -54,8 +54,8 @@ func ResolveSecrets(cfg *config.Config) map[string]string {
 		}
 	}
 
-	// 3. Explicit mask_env vars from process env
-	for _, name := range cfg.MaskEnv {
+	// 3. Explicit mask_keys vars from process env
+	for _, name := range cfg.MaskKeys {
 		if _, exists := secrets[name]; exists {
 			continue
 		}

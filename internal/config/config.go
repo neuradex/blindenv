@@ -49,7 +49,7 @@ type Config struct {
 	Inject       []string `yaml:"inject,omitempty"`
 	Passthrough  []string `yaml:"passthrough,omitempty"`
 	SecretFiles  []string `yaml:"secret_files,omitempty"`
-	MaskEnv      []string `yaml:"mask_env,omitempty"`
+	MaskKeys     []string `yaml:"mask_keys,omitempty"`
 	MaskPatterns []string `yaml:"mask_patterns,omitempty"`
 }
 
@@ -65,7 +65,7 @@ func (c *Config) EffectiveMode() string {
 
 // HasSecrets reports whether the config defines any secret sources.
 func (c *Config) HasSecrets() bool {
-	return len(c.Inject) > 0 || len(c.SecretFiles) > 0 || len(c.MaskEnv) > 0 || len(c.MaskPatterns) > 0
+	return len(c.Inject) > 0 || len(c.SecretFiles) > 0 || len(c.MaskKeys) > 0 || len(c.MaskPatterns) > 0
 }
 
 // EffectiveMaskPatterns returns custom patterns if configured, otherwise defaults.
@@ -147,26 +147,25 @@ id: ` + generateID() + `
 
 # mode: block             # blind (default) | block
 
-secret_files:        # .env files — auto-parsed, paths blocked from agent
+secret_files:             # .env files — parsed, values masked, file protected
   - .env
   # - .env.local
   # - ~/.aws/credentials
 
-# inject:            # env vars from host process — injected + redacted
-#   - CI_TOKEN
-#   - DEPLOY_KEY
+# mask_keys:              # mask specific env vars by exact name (from process env)
+#   - MY_CUSTOM_VAR       # use when the var is not in any file
 
-# passthrough:       # non-secret vars — explicit allowlist (strict mode)
+# mask_patterns:          # mask env vars whose name contains these substrings
+#   - KEY                 # (defaults apply when omitted — KEY, SECRET, TOKEN, etc.)
+#   - SECRET
+
+# inject:                 # pull env vars from process into subprocess
+#   - CI_TOKEN            # only needed with passthrough (strict mode)
+
+# passthrough:            # strict mode — only these vars reach the subprocess
 #   - PATH
 #   - HOME
 #   - LANG
-
-# mask_patterns:     # env vars matching these substrings are auto-masked
-#   - KEY            # (defaults apply when omitted — KEY, SECRET, TOKEN, etc.)
-#   - SECRET
-
-# mask_env:          # explicit env vars to mask (for names not matching patterns)
-#   - MY_CUSTOM_VAR
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return "", err
