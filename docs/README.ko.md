@@ -24,35 +24,50 @@
 
 ## 설치
 
-```bash
+먼저 마켓플레이스에서 플러그인을 추가합니다:
+
+```
 /plugin marketplace add neuradex/blindenv
-/plugin install blindenv@blindenv
-/reload-plugins
 ```
 
-끝입니다. 이 순간부터 에이전트는 `.env` 파일의 전체 구조를 읽을 수 있지만, 모든 시크릿 값은 `[BLINDED]`로 가려집니다. 마법 같은 점: Claude Code는 명령을 실행할 때 그 값들을 여전히 사용할 수 있습니다. 실제 값은 서브프로세스에 보이지 않게 주입되고, 시크릿이 포함된 출력도 자동으로 마스킹됩니다.
+그 다음 설치합니다 — 보호하고 싶은 폴더 안에서 설치하거나, 유저 스코프로 설치하면 모든 프로젝트에 적용됩니다:
+
+```bash
+# 프로젝트 스코프 — 이 프로젝트만 보호
+cd /your/project
+/plugin install blindenv@blindenv
+
+# 유저 스코프 — 모든 프로젝트 보호
+/plugin install blindenv@blindenv --user
+```
+
+Claude Code를 재시작하세요. 다음 세션부터 blindenv가 활성화됩니다.
+
+이 순간부터 에이전트는 `.env` 파일의 전체 구조를 읽을 수 있지만, 모든 시크릿 값은 `[BLINDED]`로 가려집니다. 마법 같은 점: Claude Code는 명령 실행 시 그 값들을 여전히 사용할 수 있습니다. 실제 값은 서브프로세스에 보이지 않게 주입되고, 시크릿이 포함된 출력도 자동으로 마스킹됩니다.
 
 ---
 
-## 더 세밀하게 제어하고 싶다면?
+## blindenv.yml
 
-프로젝트 루트에 `blindenv.yml`이 자동 생성됩니다. 열어서 보호할 파일을 설정하세요:
+첫 실행 시 프로젝트 루트에 `blindenv.yml`이 자동 생성됩니다. 생성되지 않은 경우 직접 만드세요:
 
 ```yaml
+# blindenv.yml
+secret_files:
+  - .env
+```
+
+최소 구성은 이게 전부입니다. 파일을 열어 더 추가할 수 있습니다:
+
+```yaml
+# blindenv.yml
 secret_files:
   - .env
   - .env.local
   - secrets.yaml
-```
-
-특정 환경변수를 명시적으로 마스킹하거나 이름 패턴을 추가할 수도 있습니다:
-
-```yaml
-secret_files:
-  - .env
 
 mask_env:
-  - MY_CUSTOM_VAR      # 특정 변수 마스킹
+  - MY_CUSTOM_VAR      # 특정 환경변수를 이름으로 마스킹
 
 mask_patterns:
   - KEY                # 이름에 "KEY"가 포함된 모든 환경변수 마스킹
@@ -78,7 +93,7 @@ MIT
 ---
 
 <p align="center">
-  <strong>에이전트에게 필요한 건 당신의 키가 아닙니다. 키가 여는 것입니다.</strong>
+  <strong>에이전트는 API 키를 알 필요가 없습니다. 그냥 쓸 수 있으면 됩니다.</strong>
   <br>
-  blindenv는 노출 없이 접근을 제공합니다.
+  blindenv는 값을 숨긴 채로 작동하게 합니다.
 </p>

@@ -24,35 +24,50 @@
 
 ## Install
 
-```bash
+First, add the plugin from the marketplace:
+
+```
 /plugin marketplace add neuradex/blindenv
-/plugin install blindenv@blindenv
-/reload-plugins
 ```
 
-That's it. From this moment, the agent reads your `.env` and sees the full structure — but every secret value is replaced with `[BLINDED]`. The magic: Claude Code can still use those values when running commands. The real values are injected into the subprocess invisibly, and any output that contains a secret is automatically redacted too.
+Then install it — either in the folder you want to protect, or at the user level to cover all your projects:
+
+```bash
+# Project scope — protects this project only
+cd /your/project
+/plugin install blindenv@blindenv
+
+# User scope — protects all projects
+/plugin install blindenv@blindenv --user
+```
+
+Restart Claude Code. On the next session start, blindenv is active.
+
+From this moment, the agent reads your `.env` and sees the full structure — but every secret value is replaced with `[BLINDED]`. The magic: Claude Code can still use those values when running commands. The real values are injected into the subprocess invisibly, and any output containing a secret is automatically redacted.
 
 ---
 
-## Need more control?
+## blindenv.yml
 
-A `blindenv.yml` is auto-created in your project root. Open it to configure which files are protected:
+A `blindenv.yml` is auto-created in your project root on first run. If it wasn't created, make one yourself:
 
 ```yaml
+# blindenv.yml
+secret_files:
+  - .env
+```
+
+That's the minimum. Open it to add more files or options:
+
+```yaml
+# blindenv.yml
 secret_files:
   - .env
   - .env.local
   - secrets.yaml
-```
-
-You can also explicitly mask specific environment variables or add name patterns:
-
-```yaml
-secret_files:
-  - .env
 
 mask_env:
-  - MY_CUSTOM_VAR      # mask a specific variable
+  - MY_CUSTOM_VAR      # mask a specific env var by name
 
 mask_patterns:
   - KEY                # mask any env var whose name contains "KEY"

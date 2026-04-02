@@ -24,35 +24,50 @@
 
 ## インストール
 
-```bash
+まず、マーケットプレイスからプラグインを追加します：
+
+```
 /plugin marketplace add neuradex/blindenv
-/plugin install blindenv@blindenv
-/reload-plugins
 ```
 
-以上です。この瞬間から、エージェントは `.env` ファイルの全体構造を読めますが、すべてのシークレット値は `[BLINDED]` に置き換えられます。魔法のような点：Claude Code はコマンド実行時にその値を引き続き使用できます。実際の値はサブプロセスに見えない形で注入され、シークレットを含む出力も自動的にマスキングされます。
+次にインストールします — 保護したいフォルダ内でインストールするか、ユーザースコープでインストールするとすべてのプロジェクトに適用されます：
+
+```bash
+# プロジェクトスコープ — このプロジェクトのみ保護
+cd /your/project
+/plugin install blindenv@blindenv
+
+# ユーザースコープ — すべてのプロジェクトを保護
+/plugin install blindenv@blindenv --user
+```
+
+Claude Code を再起動してください。次のセッション開始時から blindenv が有効になります。
+
+この瞬間から、エージェントは `.env` ファイルの全体構造を読めますが、すべてのシークレット値は `[BLINDED]` に置き換えられます。魔法のような点：Claude Code はコマンド実行時にその値を引き続き使用できます。実際の値はサブプロセスに見えない形で注入され、シークレットを含む出力も自動的にマスキングされます。
 
 ---
 
-## より細かく制御したい場合
+## blindenv.yml
 
-プロジェクトルートに `blindenv.yml` が自動生成されます。開いて保護するファイルを設定してください：
+初回実行時にプロジェクトルートへ `blindenv.yml` が自動生成されます。生成されなかった場合は自分で作成してください：
 
 ```yaml
+# blindenv.yml
+secret_files:
+  - .env
+```
+
+最小構成はこれだけです。開いてさらに追加することもできます：
+
+```yaml
+# blindenv.yml
 secret_files:
   - .env
   - .env.local
   - secrets.yaml
-```
-
-特定の環境変数を明示的にマスキングしたり、名前パターンを追加することもできます：
-
-```yaml
-secret_files:
-  - .env
 
 mask_env:
-  - MY_CUSTOM_VAR      # 特定の変数をマスク
+  - MY_CUSTOM_VAR      # 特定の環境変数を名前でマスク
 
 mask_patterns:
   - KEY                # 名前に "KEY" を含むすべての環境変数をマスク
