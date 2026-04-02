@@ -1,6 +1,6 @@
 {
   "name": "blindenv",
-  "version": "0.7.0",
+  "version": "0.7.5",
   "description": "Secret isolation for AI coding agents — agents use your secrets but never see them",
   "author": { "name": "neuradex" },
   "homepage": "https://github.com/neuradex/blindenv",

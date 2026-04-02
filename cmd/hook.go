@@ -192,6 +192,11 @@ func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {
 
 	// Fast path: check path match and cache dir without resolving secrets.
 	if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) {
+		// If the file doesn't exist, let the read proceed — agent gets a normal
+		// "file not found" error rather than a confusing block message.
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			return allow
+		}
 		switch mode {
 		case config.ModeBlind:
 			return redirectToRedacted(cfg, toolInput, absPath)

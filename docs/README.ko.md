@@ -188,7 +188,7 @@ secret_files:            # .env 파일 — 자동 파싱, 값 마스킹
 
 설정 파일은 `cwd`에서 `/`까지 상위로 탐색한 뒤 `~/.blindenv.yml`도 확인합니다. 가장 가까운 파일이 적용됩니다 — `.gitignore`와 같은 방식입니다.
 
-> 추가 보안 모드(`block`, `stash`)와 고급 옵션(`passthrough`)은 [고급 설정](./ADVANCED.md)을 참고하세요.
+> 추가 보안 모드(`block`)와 고급 옵션(`passthrough`)은 [고급 설정](./ADVANCED.md)을 참고하세요.
 
 ---
 
@@ -201,7 +201,7 @@ blindenv hook cc <hook>               Claude Code PreToolUse 훅
                                        bash | read | grep | glob | guard-file
 ```
 
-> 추가 명령어(`stash`, `cache-restore`, `cache-refresh`, `check-file`)는 [고급 설정](./ADVANCED.md)을 참고하세요.
+> 추가 명령어(`check-file`, `has-config`)는 [고급 설정](./ADVANCED.md)을 참고하세요.
 
 ---
 

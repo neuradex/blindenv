@@ -145,7 +145,7 @@ func CreateDefault() (string, error) {
 
 id: ` + generateID() + `
 
-# mode: block             # blind (default) | block | stash
+# mode: block             # blind (default) | block
 
 secret_files:        # .env files — auto-parsed, paths blocked from agent
   - .env

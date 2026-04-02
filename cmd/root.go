@@ -28,12 +28,13 @@ func Execute() error {
 		return initCmd()
 	case "hook":
 		return hookCmd()
-	case "stash":
-		return stashCmd()
-	case "cache-restore":
-		return cacheRestoreCmd()
-	case "cache-refresh":
-		return cacheRefreshCmd()
+	// stash mode commands — disabled, under development
+	// case "stash":
+	// 	return stashCmd()
+	// case "cache-restore":
+	// 	return cacheRestoreCmd()
+	// case "cache-refresh":
+	// 	return cacheRefreshCmd()
 	case "version", "--version", "-v":
 		fmt.Println("blindenv " + version)
 		return nil
@@ -194,28 +195,19 @@ Usage:
   blindenv run '<command>'       Execute command with secret isolation + output redaction
   blindenv check-file <path>     Check if a file contains or exposes secrets
   blindenv has-config            Exit 0 if env mediation config exists, 1 otherwise
-  blindenv stash                 Move secret files to cache, delete originals (stash mode only)
-  blindenv cache-restore         Restore secret files from cache
-  blindenv cache-refresh         Re-cache secret files (after you edit .env)
   blindenv version               Show version
   blindenv help                  Show this help
 
 Config:
   Place blindenv.yml in your project root or ~/.blindenv.yml
 
-  mode: block           # blind (default) | block | stash
-  inject:              # env vars from process env - injected + redacted
-    - API_KEY
-  passthrough:         # non-secret vars - explicit allowlist
-    - PATH
-    - HOME
-  secret_files:        # .env files - auto-parsed, paths blocked
+  secret_files:        # .env files - auto-parsed, values masked
     - .env
-
-Security modes:
-  blind      Files readable but values show [BLINDED] (default)
-  block      Explicit deny — agent cannot access secret files
-  stash      Files physically removed from disk — even ls reveals nothing
+  mask_patterns:       # env var name patterns for auto-detection
+    - KEY
+    - SECRET
+  mask_env:            # explicit env vars to mask
+    - MY_CUSTOM_VAR
 
 Example:
   blindenv run 'curl -H "Authorization: $API_KEY" https://api.example.com'

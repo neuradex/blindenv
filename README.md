@@ -188,7 +188,7 @@ secret_files:            # .env files — auto-parsed, values masked
 
 Config is discovered by walking up from `cwd` to `/`, then checking `~/.blindenv.yml`. The nearest one wins — just like `.gitignore`.
 
-> For additional security modes (`block`, `stash`) and advanced options (`passthrough`), see [Advanced Configuration](./docs/ADVANCED.md).
+> For additional security modes (`block`) and advanced options (`passthrough`), see [Advanced Configuration](./docs/ADVANCED.md).
 
 ---
 
@@ -201,7 +201,7 @@ blindenv hook cc <hook>               Claude Code PreToolUse hooks
                                        bash | read | grep | glob | guard-file
 ```
 
-> For additional commands (`stash`, `cache-restore`, `cache-refresh`, `check-file`), see [Advanced Configuration](./docs/ADVANCED.md).
+> For additional commands (`check-file`, `has-config`), see [Advanced Configuration](./docs/ADVANCED.md).
 
 ---
 
