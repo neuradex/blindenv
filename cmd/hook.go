@@ -132,7 +132,7 @@ func redirectToRedacted(cfg *config.Config, toolInput map[string]interface{}, ab
 
 func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 	command := p.ParseBashCommand(stdin)
-	if command == "" || strings.Contains(command, "blindenv run ") || strings.HasSuffix(command, "blindenv") {
+	if command == "" {
 		return allow
 	}
 
@@ -145,11 +145,29 @@ func hookBash(p provider.Provider, stdin []byte) provider.HookResult {
 		binPath = filepath.Join(root, "bin", "blindenv")
 	}
 
+	if isAlreadyWrapped(command, binPath) {
+		return allow
+	}
+
 	escaped := strings.ReplaceAll(command, "'", "'\\''")
 	return provider.HookResult{
 		Action:  provider.Rewrite,
 		Command: fmt.Sprintf("%s run '%s'", binPath, escaped),
 	}
+}
+
+// isAlreadyWrapped checks if the command starts with blindenv (by full path or name).
+// Security-critical: must not be fooled by commands that merely contain "blindenv"
+// in the middle (e.g. inside echo, variable assignments, pipes).
+func isAlreadyWrapped(command, binPath string) bool {
+	trimmed := strings.TrimSpace(command)
+	if strings.HasPrefix(trimmed, binPath+" ") || trimmed == binPath {
+		return true
+	}
+	if strings.HasPrefix(trimmed, "blindenv ") || trimmed == "blindenv" {
+		return true
+	}
+	return false
 }
 
 func hookFileAccess(p provider.Provider, stdin []byte) provider.HookResult {

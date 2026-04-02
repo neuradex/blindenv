@@ -19,7 +19,6 @@
   <a href="#install">Install</a> ·
   <a href="#quick-start">Quick Start</a> ·
   <a href="#how-it-works">How It Works</a> ·
-  <a href="#security-modes">Security Modes</a> ·
   <a href="#configuration">Configuration</a> ·
   <a href="#cli-reference">CLI Reference</a> ·
   <a href="#beyond-secret-managers">Comparison</a>
@@ -37,36 +36,32 @@
 
 blindenv lets AI agents **use** your API keys, database credentials, and tokens — without ever **seeing** them.
 
-- **Secret injection** — Resolves `$VAR` references in an isolated subprocess. The agent writes `$API_KEY`, the real value is injected behind the scenes.
-- **Output redaction** — Scans all stdout/stderr and replaces secret values with `[BLINDED]` before the agent sees it.
-- **File invisibility** — Secret files return "does not exist" for reads/edits and are silently excluded from searches and listings. The agent doesn't know they're there.
-- **Config protection** — Agents cannot modify `blindenv.yml`. The rules are tamper-proof.
-- **Content-aware blocking** — Even if a secret file is copied or renamed, any file containing a secret value is blocked. Path evasion doesn't work.
+The agent reads your `.env` file and sees structure, variable names, and comments — but every secret value is replaced with `[BLINDED]`. Commands run with real credentials injected behind the scenes, and any output containing a secret is automatically redacted.
 
 ```
-Agent writes:    curl -H "Authorization: $API_KEY" https://api.example.com
+Agent reads .env:    API_KEY=[BLINDED]
+                     DB_PASSWORD=[BLINDED]
+                     DEBUG=true              ← non-secret values pass through
+
+Agent runs command:  curl -H "Authorization: $API_KEY" https://api.example.com
                          ↓
-blindenv proxy:  Injects real value into subprocess env
+blindenv proxy:      Injects real value into subprocess env
                          ↓
-Agent receives:  {"result": "ok", "token": "[BLINDED]"}
+Agent receives:      {"result": "ok", "token": "[BLINDED]"}
 ```
 
-### Every angle is covered
+### What the agent sees
 
-No matter what the agent tries, it cannot see your secrets:
-
-| Agent attempts | What the agent sees |
+| Agent action | Result |
 |---|---|
-| Read `.env` with Read tool | `File does not exist` |
-| Edit or Write to `.env` | `File does not exist` |
-| `grep API_KEY .env` | No results (secret files silently excluded) |
-| `Glob **/.env*` to discover files | No results (secret files silently excluded) |
-| `cat .env` in Bash | Secret file inaccessible in subprocess |
-| Copy `.env` to `tmp.txt`, read the copy | `File does not exist` (content-aware scan) |
-| `echo $API_KEY` to print the value | `[BLINDED]` |
+| Read `.env` | Variable names visible, all values → `[BLINDED]` |
+| `echo $API_KEY` in Bash | `[BLINDED]` |
+| `grep` across project | Secret files silently excluded from results |
+| `Glob **/.env*` | Secret files silently excluded from listings |
+| Copy `.env` to `tmp.txt`, read the copy | Blocked (content-aware scan detects secret values) |
 | Edit `blindenv.yml` to disable rules | Blocked — config is tamper-proof |
 
-The agent can't read, find, search, edit, or write secret files — because as far as it knows, **they don't exist**. Meanwhile, API calls work, deploys succeed, and services respond. The agent gets full functionality without ever seeing the credentials that make it happen.
+The agent gets full context about your project's configuration structure. It just can't see the values that matter. Meanwhile, API calls work, deploys succeed, and services respond.
 
 ---
 
@@ -89,8 +84,6 @@ secret_files:
   - .env.local
   # - ~/.aws/credentials
 ```
-
-Once configured, the agent cannot even know these files exist — all access is structurally blocked.
 
 ### Build from source
 
@@ -119,13 +112,14 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and project struc
 
 ## Quick Start
 
-With `blindenv.yml` in place, all key-value pairs in your `.env` files are automatically:
+With `blindenv.yml` in place, everything works automatically:
 
 | | What happens |
 |---|---|
-| **Injected** | Secret values available as `$VAR` in commands via `blindenv run` |
+| **Masked** | Agent reads `.env` files with all values replaced by `[BLINDED]` |
+| **Injected** | Real secret values available as `$VAR` in commands via `blindenv run` |
 | **Redacted** | Any output containing a secret value → `[BLINDED]` |
-| **Blocked** | Agent cannot Read, Grep, Edit, or Write secret files |
+| **Excluded** | Secret files silently omitted from Grep and Glob results |
 
 ```bash
 # Your .env contains: API_KEY=sk-a1b2c3d4
@@ -139,78 +133,29 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 
 ## How It Works
 
-<p align="center">
-  <img src="./docs/blindenv-architecture-light.svg" alt="blindenv defense architecture" />
-</p>
-
 ### Defense layers
 
 | # | Layer | What it does |
 |---|-------|-------------|
-| 1 | **Subprocess isolation** | Secrets exist only in the subprocess environment — never in the agent's context |
-| 2 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[BLINDED]` |
-| 3 | **File invisibility** | Secret files return "does not exist" for Read/Edit/Write and are silently excluded from Grep/Glob |
-| 4 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
+| 1 | **File masking** | Secret files are readable, but all values replaced with `[BLINDED]` |
+| 2 | **Subprocess isolation** | Real secrets exist only in the subprocess environment — never in the agent's context |
+| 3 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[BLINDED]` |
+| 4 | **Auto-detection** | Environment variables matching patterns like `KEY`, `SECRET`, `TOKEN` are automatically masked |
 | 5 | **Content-aware blocking** | Files containing secret values are blocked regardless of path — copying or renaming won't help |
+| 6 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
 
 ### Claude Code hooks
 
 With the plugin installed, six PreToolUse hooks guard every agent action:
 
-<p align="center">
-  <img src="./docs/blindenv-hooks-light.svg" alt="Claude Code hook architecture" />
-</p>
-
 | Tool | Hook | Behavior |
 |------|------|----------|
 | **Bash** | `blindenv hook cc bash` | Rewrites command to `blindenv run '...'` — secrets injected, output redacted |
-| **Read** | `blindenv hook cc read` | Secret files → "does not exist" (no blindenv fingerprint) |
+| **Read** | `blindenv hook cc read` | Secret files → redirected to masked copy with `[BLINDED]` values |
 | **Grep** | `blindenv hook cc grep` | Injects exclusion globs — secret files silently omitted from results |
 | **Glob** | `blindenv hook cc glob` | Injects exclusion patterns — secret files silently omitted from listings |
-| **Edit** | `blindenv hook cc guard-file` | Secret files → "does not exist"; `blindenv.yml` → explicit block |
-| **Write** | `blindenv hook cc guard-file` | Secret files → "does not exist"; `blindenv.yml` → explicit block |
-
-The agent never sees a "blocked" message for secret files — they simply don't exist. The only explicit block is on `blindenv.yml` itself, and only because the agent already knows blindenv is installed.
-
----
-
-## Security Modes
-
-> *"Not knowing something exists is the ultimate security."*
-
-blindenv offers three security modes. Choose how much the agent should see:
-
-```yaml
-# blindenv.yml
-mode: block    # blind (default) | block | stash
-```
-
-| Mode | Secret file access | Secret values | `ls` reveals files? |
-|------|-------------------|--------------|---------------------|
-| **`blind`** (default) | Readable | `[BLINDED]` | Yes |
-| **`block`** | Explicit deny | Hidden | Yes |
-| **`stash`** | File not found | Hidden | **No** (physically removed) |
-
-### `blind` — See Structure, Not Values (default)
-
-The agent can read secret files, but all secret values are replaced with `[BLINDED]`. Variable names, comments, and file structure remain visible. The most natural experience — no mystery, no blocked messages, the agent just can't see what matters.
-
-```
-# Agent reads .env:
-API_KEY=[BLINDED]
-DB_PASSWORD=[BLINDED]
-DEBUG=true              ← non-secret values pass through
-```
-
-### `block` — Explicit Deny
-
-The agent sees "access denied" when it tries to read secret files. It knows the files exist but cannot access them. Use this when you want clear feedback about what's protected.
-
-### `stash` — Complete Invisibility
-
-The strongest mode. At session start, secret files are moved to a secure cache (`~/.cache/blindenv/`) and physically deleted from disk. Even `ls`, `find`, and `tree` in Bash reveal nothing. The files genuinely don't exist during the session.
-
-Secrets remain fully functional — they're served from cache for injection and output blinding. Use `blindenv cache-restore` to bring them back after the session.
+| **Edit** | `blindenv hook cc guard-file` | Secret files → blocked; `blindenv.yml` → blocked |
+| **Write** | `blindenv hook cc guard-file` | Secret files → blocked; `blindenv.yml` → blocked |
 
 ---
 
@@ -219,35 +164,35 @@ Secrets remain fully functional — they're served from cache for injection and 
 ```yaml
 # blindenv.yml
 
-mode: block              # blind (default) | block | stash
-
-secret_files:        # .env files — auto-parsed, paths blocked from agent
+secret_files:            # .env files — auto-parsed, values masked
   - .env
   - .env.local
   - ~/.aws/credentials
 
-inject:              # env vars from host process — injected + redacted
-  - CI_TOKEN
-  - DEPLOY_KEY
+# mask_patterns:         # env var name patterns for auto-detection
+#   - KEY               # (defaults apply when omitted — KEY, SECRET, TOKEN, etc.)
+#   - SECRET
 
-passthrough:         # non-secret vars — explicit allowlist (strict mode)
-  - PATH
-  - HOME
-  - LANG
+# mask_env:              # explicit env vars to mask (for names not matching patterns)
+#   - MY_CUSTOM_VAR
+
+# inject:                # env vars from host process — injected + redacted
+#   - CI_TOKEN
+#   - DEPLOY_KEY
 ```
 
 | Field | Purpose | When to use |
 |-------|---------|-------------|
-| `mode` | Security mode: `blind`, `block`, or `stash` | When you want block/stash instead of the default blind |
-| `secret_files` | Parse `.env` files, inject values, block file access | **Always** — this is the primary mechanism |
-| `inject` | Pull env vars from the host process | CI/CD secrets, vars not in any file |
-| `passthrough` | Strict allowlist for non-secret vars | High-security environments |
+| `secret_files` | Parse `.env` files, mask values, block file access | **Always** — this is the primary mechanism |
+| `mask_patterns` | Auto-detect env vars by name pattern (e.g. `KEY`, `TOKEN`) | Defaults apply when omitted; customize to narrow or widen |
+| `mask_env` | Explicit env var names to mask | Vars that don't match any pattern |
+| `inject` | Pull env vars from the host process into subprocess | CI/CD secrets, vars not in any file |
 
-**`secret_files` alone is usually enough.** `inject` is for env vars that exist in the host process but not in any file (e.g. CI secrets).
-
-When `passthrough` is set, the subprocess gets ONLY those vars plus injected secrets (strict mode). Without it, the full host env is inherited (permissive mode).
+**`secret_files` alone is usually enough.** The default `mask_patterns` automatically catch common secret variable names (`KEY`, `SECRET`, `TOKEN`, `PASSWORD`, etc.) from the process environment.
 
 Config is discovered by walking up from `cwd` to `/`, then checking `~/.blindenv.yml`. The nearest one wins — just like `.gitignore`.
+
+> For additional security modes (`block`, `stash`) and advanced options (`passthrough`), see [Advanced Configuration](./docs/ADVANCED.md).
 
 ---
 
@@ -255,14 +200,12 @@ Config is discovered by walking up from `cwd` to `/`, then checking `~/.blindenv
 
 ```
 blindenv run '<command>'              Execute with secret isolation + output redaction
-blindenv check-file <path>            Check if file is blocked (exit 2 = blocked)
-blindenv has-config                   Exit 0 if config with secrets exists, 1 otherwise
-blindenv stash                        Move secret files to cache, delete originals (stash mode only)
-blindenv cache-restore                Restore secret files from cache
-blindenv cache-refresh                Re-cache secret files (after you edit .env)
+blindenv init                         Create blindenv.yml in current directory
 blindenv hook cc <hook>               Claude Code PreToolUse hooks
                                        bash | read | grep | glob | guard-file
 ```
+
+> For additional commands (`stash`, `cache-restore`, `cache-refresh`, `check-file`), see [Advanced Configuration](./docs/ADVANCED.md).
 
 ---
 
@@ -272,17 +215,16 @@ Traditional secret managers solve **storage and delivery** — where secrets liv
 
 | Capability | Secret managers | blindenv |
 |---|---|---|
-| Centralized secret storage | Yes | — (uses your existing `.env`) |
+| Centralized secret storage | Yes | ��� (uses your existing `.env`) |
 | Runtime injection into processes | Yes | Yes |
 | Output redaction | — | Yes |
-| File invisibility (not blocked — invisible) | — | Yes |
+| File masking (`[BLINDED]` values) | — | Yes |
+| Auto-detection by variable name | — | Yes |
 | Content-aware blocking | — | Yes |
 | Config tamper-proofing | — | Yes |
 | AI agent tool hooks | — | Yes |
 
 Secret managers and blindenv are complementary. A secret manager gets the right values into your `.env` or CI pipeline. blindenv makes sure the agent that runs your commands can **use** those values without **seeing** them.
-
-Without an agent-aware layer, an injected secret can still be read from files, echoed to stdout, or leaked through copied files — regardless of how well it was managed upstream.
 
 ---
 

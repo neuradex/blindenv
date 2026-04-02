@@ -18,13 +18,39 @@ const (
 	ModeStash = "stash"
 )
 
+// DefaultMaskPatterns are used when mask_patterns is not configured.
+var DefaultMaskPatterns = []string{
+	"KEY",
+	"SECRET",
+	"TOKEN",
+	"PASSWORD",
+	"PASSWD",
+	"CREDENTIAL",
+	"AUTH",
+	"PRIVATE",
+	"DSN",
+	"DATABASE_URL",
+	"CONNECTION_STRING",
+	"CERTIFICATE",
+	"CERT",
+	"WEBHOOK",
+	"SESSION",
+	"COOKIE",
+	"JWT",
+	"BEARER",
+	"SIGNING",
+	"ENCRYPTION",
+}
+
 // Config represents a blindenv.yml configuration file.
 type Config struct {
-	ID          string   `yaml:"id,omitempty"`
-	Mode        string   `yaml:"mode,omitempty"`
-	Inject      []string `yaml:"inject,omitempty"`
-	Passthrough []string `yaml:"passthrough,omitempty"`
-	SecretFiles []string `yaml:"secret_files,omitempty"`
+	ID           string   `yaml:"id,omitempty"`
+	Mode         string   `yaml:"mode,omitempty"`
+	Inject       []string `yaml:"inject,omitempty"`
+	Passthrough  []string `yaml:"passthrough,omitempty"`
+	SecretFiles  []string `yaml:"secret_files,omitempty"`
+	MaskEnv      []string `yaml:"mask_env,omitempty"`
+	MaskPatterns []string `yaml:"mask_patterns,omitempty"`
 }
 
 // EffectiveMode returns the configured mode, defaulting to "blind".
@@ -39,7 +65,15 @@ func (c *Config) EffectiveMode() string {
 
 // HasSecrets reports whether the config defines any secret sources.
 func (c *Config) HasSecrets() bool {
-	return len(c.Inject) > 0 || len(c.SecretFiles) > 0
+	return len(c.Inject) > 0 || len(c.SecretFiles) > 0 || len(c.MaskEnv) > 0 || len(c.MaskPatterns) > 0
+}
+
+// EffectiveMaskPatterns returns custom patterns if configured, otherwise defaults.
+func (c *Config) EffectiveMaskPatterns() []string {
+	if len(c.MaskPatterns) > 0 {
+		return c.MaskPatterns
+	}
+	return DefaultMaskPatterns
 }
 
 // FindConfigFile walks up from the given directory (or cwd) to find blindenv.yml.
@@ -126,6 +160,13 @@ secret_files:        # .env files — auto-parsed, paths blocked from agent
 #   - PATH
 #   - HOME
 #   - LANG
+
+# mask_patterns:     # env vars matching these substrings are auto-masked
+#   - KEY            # (defaults apply when omitted — KEY, SECRET, TOKEN, etc.)
+#   - SECRET
+
+# mask_env:          # explicit env vars to mask (for names not matching patterns)
+#   - MY_CUSTOM_VAR
 `
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return "", err

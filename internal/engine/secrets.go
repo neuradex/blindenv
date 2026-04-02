@@ -14,9 +14,23 @@ import (
 
 var envLineRe = regexp.MustCompile(`^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$`)
 
-// ResolveSecrets collects all secret key-value pairs from inject (process env)
-// and secret_files (.env parsing). Secret files are read from a safe cache
-// so that even if the agent destroys the originals, secrets remain available.
+// isSecretName checks whether an environment variable name matches any of the
+// given patterns (case-insensitive substring match).
+func isSecretName(name string, patterns []string) bool {
+	upper := strings.ToUpper(name)
+	for _, pat := range patterns {
+		if strings.Contains(upper, strings.ToUpper(pat)) {
+			return true
+		}
+	}
+	return false
+}
+
+// ResolveSecrets collects all secret key-value pairs from:
+//  1. inject (process env, explicit names)
+//  2. secret_files (.env parsing, read from cache)
+//  3. mask_env (explicit env var names)
+//  4. mask_patterns (auto-detect by env var name patterns)
 func ResolveSecrets(cfg *config.Config) map[string]string {
 	// Ensure cache exists before reading.
 	EnsureSecretCache(cfg)
@@ -37,6 +51,31 @@ func ResolveSecrets(cfg *config.Config) map[string]string {
 			if _, exists := secrets[k]; !exists {
 				secrets[k] = v
 			}
+		}
+	}
+
+	// 3. Explicit mask_env vars from process env
+	for _, name := range cfg.MaskEnv {
+		if _, exists := secrets[name]; exists {
+			continue
+		}
+		if val := os.Getenv(name); val != "" {
+			secrets[name] = val
+		}
+	}
+
+	// 4. Auto-detect from process env via mask_patterns
+	patterns := cfg.EffectiveMaskPatterns()
+	for _, entry := range os.Environ() {
+		k, v, ok := strings.Cut(entry, "=")
+		if !ok || v == "" {
+			continue
+		}
+		if _, exists := secrets[k]; exists {
+			continue
+		}
+		if isSecretName(k, patterns) {
+			secrets[k] = v
 		}
 	}
 
