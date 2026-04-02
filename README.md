@@ -56,10 +56,8 @@ Agent receives:      {"result": "ok", "token": "[BLINDED]"}
 |---|---|
 | Read `.env` | Variable names visible, all values → `[BLINDED]` |
 | `echo $API_KEY` in Bash | `[BLINDED]` |
-| `grep` across project | Secret files silently excluded from results |
-| `Glob **/.env*` | Secret files silently excluded from listings |
-| Copy `.env` to `tmp.txt`, read the copy | Blocked (content-aware scan detects secret values) |
-| Edit `blindenv.yml` to disable rules | Blocked — config is tamper-proof |
+| `curl` with `$API_KEY` | Works — real value injected into subprocess |
+| Any output containing a secret | Automatically replaced with `[BLINDED]` |
 
 The agent gets full context about your project's configuration structure. It just can't see the values that matter. Meanwhile, API calls work, deploys succeed, and services respond.
 
@@ -119,7 +117,6 @@ With `blindenv.yml` in place, everything works automatically:
 | **Masked** | Agent reads `.env` files with all values replaced by `[BLINDED]` |
 | **Injected** | Real secret values available as `$VAR` in commands via `blindenv run` |
 | **Redacted** | Any output containing a secret value → `[BLINDED]` |
-| **Excluded** | Secret files silently omitted from Grep and Glob results |
 
 ```bash
 # Your .env contains: API_KEY=sk-a1b2c3d4
@@ -141,8 +138,7 @@ When used as a Claude Code plugin, you don't even need `blindenv run` — the ho
 | 2 | **Subprocess isolation** | Real secrets exist only in the subprocess environment — never in the agent's context |
 | 3 | **Output redaction** | stdout/stderr scanned for secret values, replaced with `[BLINDED]` |
 | 4 | **Auto-detection** | Environment variables matching patterns like `KEY`, `SECRET`, `TOKEN` are automatically masked |
-| 5 | **Content-aware blocking** | Files containing secret values are blocked regardless of path — copying or renaming won't help |
-| 6 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
+| 5 | **Config protection** | Agent cannot modify `blindenv.yml` — the rules are tamper-proof |
 
 ### Claude Code hooks
 
@@ -151,11 +147,11 @@ With the plugin installed, six PreToolUse hooks guard every agent action:
 | Tool | Hook | Behavior |
 |------|------|----------|
 | **Bash** | `blindenv hook cc bash` | Rewrites command to `blindenv run '...'` — secrets injected, output redacted |
-| **Read** | `blindenv hook cc read` | Secret files → redirected to masked copy with `[BLINDED]` values |
-| **Grep** | `blindenv hook cc grep` | Injects exclusion globs — secret files silently omitted from results |
-| **Glob** | `blindenv hook cc glob` | Injects exclusion patterns — secret files silently omitted from listings |
-| **Edit** | `blindenv hook cc guard-file` | Secret files → blocked; `blindenv.yml` → blocked |
-| **Write** | `blindenv hook cc guard-file` | Secret files → blocked; `blindenv.yml` → blocked |
+| **Read** | `blindenv hook cc read` | Secret files → masked copy with all values as `[BLINDED]` |
+| **Edit** | `blindenv hook cc guard-file` | Secret files and `blindenv.yml` → protected from modification |
+| **Write** | `blindenv hook cc guard-file` | Secret files and `blindenv.yml` → protected from modification |
+| **Grep** | `blindenv hook cc grep` | Secret files omitted from search results |
+| **Glob** | `blindenv hook cc glob` | Secret files omitted from file listings |
 
 ---
 
@@ -215,12 +211,11 @@ Traditional secret managers solve **storage and delivery** — where secrets liv
 
 | Capability | Secret managers | blindenv |
 |---|---|---|
-| Centralized secret storage | Yes | ��� (uses your existing `.env`) |
+| Centralized secret storage | Yes | — (uses your existing `.env`) |
 | Runtime injection into processes | Yes | Yes |
 | Output redaction | — | Yes |
 | File masking (`[BLINDED]` values) | — | Yes |
 | Auto-detection by variable name | — | Yes |
-| Content-aware blocking | — | Yes |
 | Config tamper-proofing | — | Yes |
 | AI agent tool hooks | — | Yes |
 
