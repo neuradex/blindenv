@@ -396,19 +396,17 @@ func TestBuildSanitizedEnv_SecretsFromFileAddedWhenMissing(t *testing.T) {
 	}
 }
 
-func TestBuildSanitizedEnv_ExistingKeyNotOverriddenByFileSecret(t *testing.T) {
-	// If the key is already in env (via inject/passthrough), the file-secret
-	// must not overwrite it.
-	setEnv(t, "BLINDENV_OVERLAP", "from_env")
+func TestBuildSanitizedEnv_SecretOverridesShellEnv(t *testing.T) {
+	// secret_files values take priority over shell env.
+	// This ensures stale shell values don't silently shadow .env file values.
+	setEnv(t, "BLINDENV_OVERLAP", "from_shell")
 
-	cfg := &config.Config{
-		// permissive: inherit all, so BLINDENV_OVERLAP comes from process env
-	}
+	cfg := &config.Config{}
 	secrets := map[string]string{"BLINDENV_OVERLAP": "from_file"}
 	got := BuildSanitizedEnv(cfg, secrets)
 
-	if !containsEntry(got, "BLINDENV_OVERLAP=from_env") {
-		t.Errorf("existing env entry should not be overridden by file secret; got entries: %v", got)
+	if !containsEntry(got, "BLINDENV_OVERLAP=from_file") {
+		t.Errorf("secret (file) should override shell env; got entries: %v", got)
 	}
 }
 

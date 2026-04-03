@@ -257,11 +257,11 @@ func BuildSanitizedEnv(cfg *config.Config, secrets map[string]string) []string {
 		}
 	}
 
-	// Overlay secrets (inject + file-derived, already resolved by ResolveSecrets)
+	// Overlay secrets — secret_files values take priority over shell env.
+	// inject/mask_keys/mask_patterns also read from process env, so their
+	// values are the same either way; only secret_files can differ.
 	for k, v := range secrets {
-		if _, exists := env[k]; !exists {
-			env[k] = v
-		}
+		env[k] = v
 	}
 
 	// Convert to []string for exec

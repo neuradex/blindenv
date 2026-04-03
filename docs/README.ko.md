@@ -43,7 +43,25 @@ cd /your/project
 
 Claude Code를 재시작하세요. 다음 세션부터 blindenv가 활성화됩니다.
 
-이 순간부터 에이전트는 `.env` 파일의 전체 구조를 읽을 수 있지만, 모든 시크릿 값은 `[BLINDED]`로 가려집니다. 마법 같은 점: Claude Code는 명령 실행 시 그 값들을 여전히 사용할 수 있습니다. 실제 값은 서브프로세스에 보이지 않게 주입되고, 시크릿이 포함된 출력도 자동으로 마스킹됩니다.
+---
+
+## 동작 원리
+
+에이전트가 `.env`를 읽으면 변수 이름과 주석은 보이지만, 모든 시크릿 값은 `[BLINDED]`로 가려집니다. 에이전트가 명령을 실행하면 blindenv가 실제 값을 서브프로세스에 보이지 않게 주입합니다. 시크릿이 포함된 출력도 자동으로 마스킹됩니다.
+
+```
+에이전트가 .env 읽기:  API_KEY=[BLINDED]
+                      DB_URL=[BLINDED]
+                      DEBUG=true        ← 시크릿 아닌 값은 그대로
+
+에이전트가 명령 실행:  curl -H "Authorization: $API_KEY" https://api.example.com
+                          ↓
+blindenv 주입:         서브프로세스 env에 실제 API_KEY 값 주입
+                          ↓
+에이전트가 수신:       {"result": "ok", "token": "[BLINDED]"}
+```
+
+`secret_files`에 있는 값은 같은 이름의 셸 환경변수보다 우선합니다.
 
 ---
 
@@ -57,22 +75,22 @@ secret_files:
   - .env
 ```
 
-최소 구성은 이게 전부입니다. 파일을 열어 더 추가할 수 있습니다:
+최소 구성은 이게 전부입니다. 더 추가하려면:
 
 ```yaml
 # blindenv.yml
-secret_files:
+secret_files:         # 파싱, 마스킹, 서브프로세스 주입할 파일
   - .env
   - .env.local
-  - secrets.yaml
 
-mask_keys:
-  - MY_CUSTOM_VAR      # 특정 환경변수를 이름으로 마스킹 (프로세스 env에서)
+mask_keys:            # 셸 환경변수를 이름으로 마스킹 (파일 없이 이미 export된 변수)
+  - MY_CUSTOM_VAR
 
-mask_patterns:
-  - KEY                # 이름에 "KEY"가 포함된 모든 환경변수 마스킹
-  - TOKEN
+mask_patterns:        # 이름에 해당 문자열이 포함된 환경변수 마스킹
+  - INTERNAL          # (기본값: KEY, SECRET, TOKEN, PASSWORD 등 포함)
 ```
+
+**`secret_files` vs `mask_keys`:** 시크릿이 파일에 있으면 `secret_files`. 셸에 이미 export되어 있거나 CI/CD에서 주입된 변수라면 `mask_keys` — 파일 없이.
 
 > 고급 옵션(`block` 모드, `passthrough` 등)은 [고급 설정](./ADVANCED.md)을 참고하세요.
 
