@@ -68,12 +68,10 @@ func (c *Config) HasSecrets() bool {
 	return len(c.Inject) > 0 || len(c.SecretFiles) > 0 || len(c.MaskKeys) > 0 || len(c.MaskPatterns) > 0
 }
 
-// EffectiveMaskPatterns returns custom patterns if configured, otherwise defaults.
+// EffectiveMaskPatterns returns configured patterns, or nil if not set.
+// Auto-detection is opt-in — nothing is scanned unless mask_patterns is configured.
 func (c *Config) EffectiveMaskPatterns() []string {
-	if len(c.MaskPatterns) > 0 {
-		return c.MaskPatterns
-	}
-	return DefaultMaskPatterns
+	return c.MaskPatterns
 }
 
 // FindConfigFile walks up from the given directory (or cwd) to find blindenv.yml.
@@ -155,8 +153,8 @@ secret_files:             # .env files — parsed, values masked, file protected
 # mask_keys:              # mask specific env vars by exact name (from process env)
 #   - MY_CUSTOM_VAR       # use when the var is not in any file
 
-# mask_patterns:          # mask env vars whose name contains these substrings
-#   - KEY                 # (defaults apply when omitted — KEY, SECRET, TOKEN, etc.)
+# mask_patterns:          # auto-detect env vars by name substring (opt-in, off by default)
+#   - KEY                 # masks any env var whose name contains "KEY"
 #   - SECRET
 
 # inject:                 # pull env vars from process into subprocess

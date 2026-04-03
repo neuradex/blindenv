@@ -272,10 +272,19 @@ func hookGlob(p provider.Provider, stdin []byte) provider.HookResult {
 		return allow
 	}
 
+	// In blind mode, secret files are visible in listings — they're just masked when read.
+	// In block mode, hide them from listings entirely.
+	if cfg.EffectiveMode() == config.ModeBlind {
+		return allow
+	}
+
 	// Block or redirect if path targets a secret directory.
 	searchPath, _ := toolInput["path"].(string)
-	if searchPath != "" && engine.MatchSecretFilePath(searchPath, cfg.SecretFiles) {
-		return blockOrVanish(cfg, toolInput, "path", "cannot list files in secret directory")
+	if searchPath != "" {
+		absPath, _ := filepath.Abs(searchPath)
+		if engine.MatchSecretFilePath(absPath, cfg.SecretFiles) {
+			return blockOrVanish(cfg, toolInput, "path", "cannot list files in secret directory")
+		}
 	}
 
 	// Inject negation patterns to hide secret files from results.

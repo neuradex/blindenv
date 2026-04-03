@@ -237,13 +237,12 @@ func TestResolveSecrets_InjectTakesPriorityOverSecretFile(t *testing.T) {
 	}
 }
 
-func TestResolveSecrets_EmptyConfig_StillAppliesDefaultPatterns(t *testing.T) {
-	// An empty config still applies DefaultMaskPatterns,
-	// so any env var matching KEY/SECRET/TOKEN etc. will be caught.
+func TestResolveSecrets_EmptyConfig_NoAutoDetection(t *testing.T) {
+	// An empty config with no mask_patterns must NOT auto-detect process env vars.
+	// Auto-detection is opt-in only.
 	cfg := &config.Config{}
 	got := ResolveSecrets(cfg)
-	// Just verify it doesn't panic; actual matches depend on the process env.
-	_ = got
+	_ = got // just verify no panic; no secrets expected without explicit config
 }
 
 func TestResolveSecrets_MultipleSecretFiles(t *testing.T) {
